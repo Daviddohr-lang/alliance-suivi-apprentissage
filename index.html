@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#152421">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Alliance">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Alliance - Suivi d'apprentissage</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="app-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="app-icon.svg">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-card">
+        <div>
+          <p class="eyebrow">Alliance</p>
+          <h1>Connexion</h1>
+          <p>Choisissez votre espace pour accéder à l'outil de suivi.</p>
+        </div>
+
+        <div class="auth-grid">
+          <form class="auth-panel" id="adminLoginForm">
+            <h2>Admin Alliance</h2>
+            <label>
+              <span>Code admin</span>
+              <input id="adminAccessCode" type="password" placeholder="Code admin" required>
+            </label>
+            <button class="primary-button" type="submit">Entrer côté Alliance</button>
+            <p class="helper-text" id="adminLoginHelp">Code de test : ALLIANCE2026</p>
+          </form>
+
+          <form class="auth-panel" id="publicTraineeLoginForm">
+            <h2>Stagiaire</h2>
+            <label>
+              <span>Code stagiaire</span>
+              <input id="publicTraineeAccessCode" placeholder="Ex. LIBE-8508" required>
+            </label>
+            <button class="primary-button" type="submit">Entrer dans mon espace</button>
+            <p class="helper-text" id="publicTraineeLoginHelp">Le code est remis par le centre.</p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <div class="app-shell" id="appShell" hidden>
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" id="brandLogoMark" aria-hidden="true">A</div>
+          <div>
+            <strong id="brandName">Alliance</strong>
+            <span>Suivi apprentissage</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Navigation principale">
+          <button class="nav-item active" data-view="dashboard" type="button">
+            <span aria-hidden="true">▦</span>
+            Tableau de bord
+          </button>
+          <button class="nav-item" data-view="learners" type="button">
+            <span aria-hidden="true">◉</span>
+            Apprenants
+          </button>
+          <button class="nav-item" data-view="followup" type="button">
+            <span aria-hidden="true">✓</span>
+            Suivi
+          </button>
+          <button class="nav-item" data-view="messages" type="button">
+            <span aria-hidden="true">✉</span>
+            Messages
+          </button>
+          <button class="nav-item" data-view="trainee" type="button">
+            <span aria-hidden="true">◌</span>
+            Espace stagiaire
+          </button>
+          <button class="nav-item" data-view="center" type="button">
+            <span aria-hidden="true">⌂</span>
+            Centre
+          </button>
+        </nav>
+
+        <div class="sidebar-note">
+          <span>Version locale</span>
+          <p>Les données sont sauvegardées dans ce navigateur.</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="centerEyebrow">Organisme Alliance</p>
+            <h1>Suivi d'apprentissage</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="logoutButton" type="button">Déconnexion</button>
+            <button class="ghost-button" id="resetDataButton" type="button">Réinitialiser</button>
+            <button class="primary-button" id="exportButton" type="button">Exporter CSV</button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboardView" aria-labelledby="dashboardTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="dashboardTitle">Vue globale</h2>
+              <p>Repérez rapidement la progression, l'assiduité et les situations à risque.</p>
+            </div>
+          </div>
+
+          <div class="metric-grid" id="metricGrid"></div>
+
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Apprenants à surveiller</h3>
+                <span id="riskCount">0</span>
+              </div>
+              <div class="risk-list" id="riskList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Progression par formation</h3>
+              </div>
+              <div class="program-list" id="programList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="learnersView" aria-labelledby="learnersTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="learnersTitle">Apprenants</h2>
+              <p>Ajoutez, filtrez et ouvrez une fiche individuelle.</p>
+            </div>
+            <button class="primary-button" id="openFormButton" type="button">Nouvel apprenant</button>
+          </div>
+
+          <div class="toolbar">
+            <label class="search-field">
+              <span>Recherche</span>
+              <input id="searchInput" type="search" placeholder="Nom, formation, référent...">
+            </label>
+            <label>
+              <span>Statut</span>
+              <select id="statusFilter">
+                <option value="all">Tous</option>
+                <option value="Actif">Actif</option>
+                <option value="En pause">En pause</option>
+                <option value="Terminé">Terminé</option>
+                <option value="À risque">À risque</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="content-grid">
+            <div class="learner-list" id="learnerList"></div>
+            <aside class="detail-panel" id="detailPanel"></aside>
+          </div>
+        </section>
+
+        <section class="view" id="followupView" aria-labelledby="followupTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="followupTitle">Suivi pédagogique</h2>
+              <p>Consignez les rendez-vous, objectifs et actions de soutien.</p>
+            </div>
+          </div>
+
+          <div class="followup-layout">
+            <form class="panel followup-form" id="noteForm">
+              <h3>Ajouter une note</h3>
+              <label>
+                <span>Apprenant</span>
+                <select id="noteLearner" required></select>
+              </label>
+              <label>
+                <span>Type de suivi</span>
+                <select id="noteType" required>
+                  <option>Entretien</option>
+                  <option>Objectif hebdomadaire</option>
+                  <option>Action de soutien</option>
+                  <option>Alerte absence</option>
+                </select>
+              </label>
+              <label>
+                <span>Commentaire</span>
+                <textarea id="noteText" rows="5" placeholder="Résumé du point, décision, prochaine action..." required></textarea>
+              </label>
+              <button class="primary-button" type="submit">Enregistrer</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Journal récent</h3>
+              </div>
+              <div class="timeline" id="timeline"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="messagesView" aria-labelledby="messagesTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="messagesTitle">Messages</h2>
+              <p>Échangez avec un stagiaire et gardez un historique de conversation.</p>
+            </div>
+          </div>
+
+          <div class="messages-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Stagiaires</h3>
+              </div>
+              <div class="message-learner-list" id="messageLearnerList"></div>
+            </section>
+
+            <section class="panel chat-panel">
+              <div class="chat-heading" id="chatHeading"></div>
+              <div class="chat-thread" id="chatThread"></div>
+              <form class="chat-form" id="messageForm">
+                <label>
+                  <span>Expéditeur</span>
+                  <select id="messageSender">
+                    <option value="Centre">Centre</option>
+                    <option value="Christophe">Christophe - assistant IA</option>
+                    <option value="Stagiaire">Stagiaire</option>
+                  </select>
+                </label>
+                <label class="chat-message-field">
+                  <span>Message</span>
+                  <textarea id="messageText" rows="3" placeholder="Écrire un message..." required></textarea>
+                </label>
+                <button class="primary-button" type="submit">Envoyer</button>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="centerView" aria-labelledby="centerTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="centerTitle">Coordonnées du centre</h2>
+              <p>Renseignez les informations qui identifient le centre et ses référents.</p>
+            </div>
+          </div>
+
+          <div class="center-layout">
+            <form class="panel center-form" id="centerForm">
+              <h3>Informations du centre</h3>
+              <label>
+                <span>Logo du centre</span>
+                <input id="centerLogoInput" accept="image/*" type="file">
+              </label>
+              <label>
+                <span>Nom du centre</span>
+                <input id="centerNameInput" required placeholder="Ex. Alliance Formation">
+              </label>
+              <label>
+                <span>Adresse</span>
+                <textarea id="centerAddressInput" rows="3" placeholder="Adresse complète du centre"></textarea>
+              </label>
+              <div class="form-grid compact">
+                <label>
+                  <span>Téléphone</span>
+                  <input id="centerPhoneInput" placeholder="Ex. 01 23 45 67 89">
+                </label>
+                <label>
+                  <span>E-mail</span>
+                  <input id="centerEmailInput" type="email" placeholder="contact@centre.fr">
+                </label>
+              </div>
+              <div class="form-grid compact">
+                <label>
+                  <span>Référent administratif</span>
+                  <input id="adminReferentInput" placeholder="Nom du référent administratif">
+                </label>
+                <label>
+                  <span>Référent pédagogique</span>
+                  <input id="pedagogicalReferentInput" placeholder="Nom du référent pédagogique">
+                </label>
+              </div>
+              <button class="primary-button" type="submit">Enregistrer le centre</button>
+            </form>
+
+            <section class="panel center-preview" id="centerPreview"></section>
+          </div>
+        </section>
+
+        <section class="view" id="traineeView" aria-labelledby="traineeTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="traineeTitle">Espace stagiaire</h2>
+              <p>Accès simplifié avec le code remis par le centre.</p>
+            </div>
+            <button class="ghost-button" id="traineeLogoutButton" type="button" hidden>Quitter l'espace</button>
+          </div>
+
+          <div class="trainee-layout">
+            <form class="panel trainee-login" id="traineeLoginForm">
+              <h3>Connexion stagiaire</h3>
+              <label>
+                <span>Code d'accès</span>
+                <input id="traineeAccessCode" placeholder="Ex. LAUR-4821" required>
+              </label>
+              <button class="primary-button" type="submit">Accéder à mon suivi</button>
+              <p class="helper-text" id="traineeLoginHelp">Le code d'accès est visible dans la fiche du stagiaire côté centre.</p>
+            </form>
+
+            <section class="panel trainee-space" id="traineeSpace" hidden></section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="learnerDialog">
+      <form class="dialog-card" id="learnerForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Nouvelle fiche</p>
+            <h2>Ajouter un apprenant</h2>
+          </div>
+          <button class="icon-button" id="closeDialogButton" type="button" aria-label="Fermer">×</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Nom complet</span>
+            <input id="learnerName" required placeholder="Ex. Samira Benali">
+          </label>
+          <label>
+            <span>Formation</span>
+            <input id="learnerProgram" list="programSuggestions" required placeholder="Ex. OVP - Opérateur en vidéoprotection">
+            <datalist id="programSuggestions">
+              <option value="OVP - Opérateur en vidéoprotection"></option>
+              <option value="Français professionnel"></option>
+              <option value="Numérique débutant"></option>
+              <option value="Remise à niveau"></option>
+            </datalist>
+          </label>
+          <label>
+            <span>Référent</span>
+            <input id="learnerCoach" required placeholder="Ex. Nadia M.">
+          </label>
+          <label>
+            <span>Modalité</span>
+            <select id="learnerModality">
+              <option>Présentiel</option>
+              <option>Distanciel</option>
+              <option>Hybride</option>
+            </select>
+          </label>
+          <label>
+            <span>Date d'entrée</span>
+            <input id="learnerStart" required type="date">
+          </label>
+          <label>
+            <span>Statut</span>
+            <select id="learnerStatus">
+              <option>Actif</option>
+              <option>En pause</option>
+              <option>Terminé</option>
+              <option>À risque</option>
+            </select>
+          </label>
+          <label>
+            <span>Présence (%)</span>
+            <input id="learnerAttendance" min="0" max="100" required type="number" value="85">
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="ghost-button" id="cancelFormButton" type="button">Annuler</button>
+          <button class="primary-button" type="submit">Créer la fiche</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "Alliance - Suivi d'apprentissage",
+  "short_name": "Alliance",
+  "description": "Outil de suivi d'apprentissage, de progression et de messagerie stagiaire.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f4ef",
+  "theme_color": "#152421",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

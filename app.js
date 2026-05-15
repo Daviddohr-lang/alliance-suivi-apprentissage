@@ -1,0 +1,1252 @@
+const STORAGE_KEY = "alliance-learning-tracker-v1";
+const SESSION_KEY = "alliance-session-v1";
+const ADMIN_CODE = "ALLIANCE2026";
+
+const defaultCenter = {
+  name: "Alliance",
+  address: "",
+  phone: "",
+  email: "",
+  adminReferent: "",
+  pedagogicalReferent: "",
+  logo: ""
+};
+
+const programTemplates = {
+  ovp: {
+    label: "OVP - Opérateur en vidéoprotection",
+    modality: "Présentiel",
+    modules: [
+      { name: "Objectif pédagogique : connaître la réglementation relative au code de la sécurité privée", done: false },
+      { name: "Objectif pédagogique : faire respecter la réglementation", done: false },
+      { name: "Objectif pédagogique : prévenir et gérer les situations de conflits", done: false },
+      { name: "Objectif pédagogique : agir dans le respect de la loi quant à la conservation des images", done: false },
+      { name: "Objectif pédagogique : connaître le fonctionnement de son matériel", done: false },
+      { name: "Module : environnement juridique de la vidéoprotection", done: false },
+      { name: "Module : environnement juridique national et européen de la vidéoprotection et de la télévidéoprotection", done: false },
+      { name: "Module : opérationnel et stratégique", done: false },
+      { name: "Module : assurer la sécurité des personnes, des lieux, des espaces ou des bâtiments à l'aide de la vidéoprotection et télévidéoprotection", done: false },
+      { name: "Module : maîtriser la communication", done: false },
+      { name: "Module : vidéoprotection", done: false },
+      { name: "Module : connaître et maîtriser les différents systèmes de sécurité et outils de travail", done: false },
+      { name: "Module : maîtriser les systèmes d'exploitation", done: false },
+      { name: "Module : environnement juridique de la sécurité privée", done: false },
+      { name: "Module : connaître le livre VI du CSI", done: false },
+      { name: "Module : connaître les dispositions du code pénal", done: false },
+      { name: "Module : les principes de la République Française", done: false },
+      { name: "Module : comportemental", done: false },
+      { name: "Module : maîtriser la relation avec les interlocuteurs : clients, services de secours, services compétents de l'État", done: false },
+      { name: "Module : environnement site sensible et site caractérisé sensible", done: false },
+      { name: "Immersion professionnelle : 35 heures de stage en entreprise obligatoire", done: false }
+    ]
+  },
+  ovpDistance: {
+    label: "OVP - Opérateur en vidéoprotection",
+    modality: "Distanciel",
+    modules: [
+      { name: "Distanciel : Vidéoprotection : les règles républicaines", done: false },
+      { name: "Distanciel : Vidéoprotection : les sites sensibles et d'importance vitale", done: false },
+      { name: "Distanciel : Vidéoprotection : le cadre légal et technique de l'opérateur en vidéosurveillance", done: false },
+      { name: "Distanciel : Vidéoprotection : la vidéosurveillance, les règles d'installation R82", done: false },
+      { name: "Distanciel : Vidéoprotection : questionnaire OVP", done: false }
+    ]
+  }
+};
+
+const defaultLearners = [
+  {
+    id: crypto.randomUUID(),
+    name: "Samira Benali",
+    program: "Français professionnel",
+    coach: "Nadia M.",
+    modality: "Présentiel",
+    startDate: "2026-02-03",
+    status: "Actif",
+    attendance: 92,
+    modules: [
+      { name: "Accueil et diagnostic", done: true },
+      { name: "Communication orale", done: true },
+      { name: "Écrits professionnels", done: false },
+      { name: "Préparation certification", done: false }
+    ],
+    notes: [
+      { date: "2026-05-10", type: "Objectif hebdomadaire", text: "Travailler la présentation d'un parcours professionnel." }
+    ]
+  },
+  {
+    id: crypto.randomUUID(),
+    name: "Lucas Martin",
+    program: "Numérique débutant",
+    coach: "Karim B.",
+    modality: "Distanciel",
+    startDate: "2026-01-22",
+    status: "À risque",
+    attendance: 64,
+    modules: [
+      { name: "Prise en main ordinateur", done: true },
+      { name: "Messagerie", done: false },
+      { name: "Démarches en ligne", done: false },
+      { name: "Sécurité numérique", done: false }
+    ],
+    notes: [
+      { date: "2026-05-13", type: "Alerte absence", text: "Deux absences consécutives. Appel prévu avec le référent." }
+    ]
+  },
+  {
+    id: crypto.randomUUID(),
+    name: "Aïcha Diallo",
+    program: "Remise à niveau",
+    coach: "Claire T.",
+    modality: "Hybride",
+    startDate: "2026-03-18",
+    status: "Actif",
+    attendance: 87,
+    modules: [
+      { name: "Positionnement", done: true },
+      { name: "Mathématiques pratiques", done: true },
+      { name: "Lecture de consignes", done: true },
+      { name: "Projet final", done: false }
+    ],
+    notes: [
+      { date: "2026-05-08", type: "Entretien", text: "Bonne progression. Prévoir un exercice d'autonomie sur le budget." }
+    ]
+  }
+];
+
+let state = loadState();
+let selectedLearnerId = state.learners[0]?.id || null;
+let selectedMessageLearnerId = state.learners[0]?.id || null;
+let currentTraineeId = null;
+let currentRole = null;
+
+const views = {
+  dashboard: document.querySelector("#dashboardView"),
+  learners: document.querySelector("#learnersView"),
+  followup: document.querySelector("#followupView"),
+  messages: document.querySelector("#messagesView"),
+  trainee: document.querySelector("#traineeView"),
+  center: document.querySelector("#centerView")
+};
+
+const metricGrid = document.querySelector("#metricGrid");
+const riskList = document.querySelector("#riskList");
+const riskCount = document.querySelector("#riskCount");
+const programList = document.querySelector("#programList");
+const learnerList = document.querySelector("#learnerList");
+const detailPanel = document.querySelector("#detailPanel");
+const searchInput = document.querySelector("#searchInput");
+const statusFilter = document.querySelector("#statusFilter");
+const timeline = document.querySelector("#timeline");
+const noteLearner = document.querySelector("#noteLearner");
+const learnerDialog = document.querySelector("#learnerDialog");
+const learnerForm = document.querySelector("#learnerForm");
+const noteForm = document.querySelector("#noteForm");
+const messageLearnerList = document.querySelector("#messageLearnerList");
+const chatHeading = document.querySelector("#chatHeading");
+const chatThread = document.querySelector("#chatThread");
+const messageForm = document.querySelector("#messageForm");
+const traineeLoginForm = document.querySelector("#traineeLoginForm");
+const traineeSpace = document.querySelector("#traineeSpace");
+const traineeLogoutButton = document.querySelector("#traineeLogoutButton");
+const centerForm = document.querySelector("#centerForm");
+const centerPreview = document.querySelector("#centerPreview");
+const centerLogoInput = document.querySelector("#centerLogoInput");
+const authScreen = document.querySelector("#authScreen");
+const appShell = document.querySelector("#appShell");
+const adminLoginForm = document.querySelector("#adminLoginForm");
+const publicTraineeLoginForm = document.querySelector("#publicTraineeLoginForm");
+const logoutButton = document.querySelector("#logoutButton");
+
+document.querySelectorAll(".nav-item").forEach((button) => {
+  button.addEventListener("click", () => setView(button.dataset.view));
+});
+
+document.querySelector("#openFormButton").addEventListener("click", () => learnerDialog.showModal());
+document.querySelector("#closeDialogButton").addEventListener("click", () => learnerDialog.close());
+document.querySelector("#cancelFormButton").addEventListener("click", () => learnerDialog.close());
+document.querySelector("#exportButton").addEventListener("click", exportCsv);
+document.querySelector("#resetDataButton").addEventListener("click", resetData);
+logoutButton.addEventListener("click", logoutSession);
+searchInput.addEventListener("input", renderLearners);
+statusFilter.addEventListener("change", renderLearners);
+learnerForm.addEventListener("submit", addLearner);
+noteForm.addEventListener("submit", addNote);
+messageForm.addEventListener("submit", addMessage);
+traineeLoginForm.addEventListener("submit", loginTrainee);
+traineeLogoutButton.addEventListener("click", logoutTrainee);
+adminLoginForm.addEventListener("submit", loginAdminSession);
+publicTraineeLoginForm.addEventListener("submit", loginPublicTraineeSession);
+centerForm.addEventListener("submit", saveCenter);
+centerLogoInput.addEventListener("change", updateCenterLogo);
+
+initializeApp();
+
+async function initializeApp() {
+  await loadServerState();
+  restoreSession();
+  selectedLearnerId = state.learners[0]?.id || null;
+  selectedMessageLearnerId = state.learners[0]?.id || null;
+  render();
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return { learners: defaultLearners, center: defaultCenter };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.learners)) {
+      return { learners: defaultLearners, center: defaultCenter };
+    }
+
+    return {
+      learners: parsed.learners.map(normalizeLearner),
+      center: { ...defaultCenter, ...(parsed.center || {}) }
+    };
+  } catch {
+    return { learners: defaultLearners, center: defaultCenter };
+  }
+}
+
+function restoreSession() {
+  try {
+    const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+    if (!session) {
+      return;
+    }
+
+    if (session.role === "admin") {
+      currentRole = "admin";
+      return;
+    }
+
+    if (session.role === "trainee" && state.learners.some((learner) => learner.id === session.learnerId)) {
+      currentRole = "trainee";
+      currentTraineeId = session.learnerId;
+    }
+  } catch {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function normalizeLearner(learner) {
+  const modality = learner.modality || "Présentiel";
+  const shouldMarkDistance = modality === "Distanciel" || modality === "Hybride";
+
+  return {
+    ...learner,
+    modality,
+    accessCode: learner.accessCode || generateAccessCode(learner.name),
+    messages: learner.messages || [],
+    modules: (learner.modules || []).map((module) => {
+      if (shouldMarkDistance && module.name.startsWith("Vidéoprotection :")) {
+        return { ...module, name: `Distanciel : ${module.name}` };
+      }
+
+      return module;
+    })
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  saveServerState();
+}
+
+async function loadServerState() {
+  if (!isServerMode()) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/state");
+    if (!response.ok) {
+      return;
+    }
+
+    const serverState = await response.json();
+    if (!serverState || !Array.isArray(serverState.learners)) {
+      await saveServerState();
+      return;
+    }
+
+    state = {
+      learners: serverState.learners.map(normalizeLearner),
+      center: { ...defaultCenter, ...(serverState.center || {}) }
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // The static file version keeps working with localStorage only.
+  }
+}
+
+async function saveServerState() {
+  if (!isServerMode()) {
+    return;
+  }
+
+  try {
+    await fetch("/api/state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state)
+    });
+  } catch {
+    // LocalStorage remains the offline fallback.
+  }
+}
+
+function isServerMode() {
+  return location.protocol === "http:" || location.protocol === "https:";
+}
+
+function setView(viewName) {
+  if (currentTraineeId && viewName !== "trainee") {
+    viewName = "trainee";
+  }
+
+  Object.entries(views).forEach(([name, view]) => view.classList.toggle("active", name === viewName));
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === viewName);
+  });
+}
+
+function render() {
+  renderAuthState();
+  updateNavigationAccess();
+  renderOrganization();
+  renderDashboard();
+  renderLearners();
+  renderFollowup();
+  renderMessages();
+  renderTraineeSpace();
+  renderCenter();
+}
+
+function renderAuthState() {
+  const isConnected = Boolean(currentRole);
+  authScreen.hidden = isConnected;
+  appShell.hidden = !isConnected;
+
+  if (!isConnected) {
+    return;
+  }
+
+  if (currentRole === "trainee") {
+    Object.entries(views).forEach(([name, view]) => view.classList.toggle("active", name === "trainee"));
+    document.querySelectorAll(".nav-item").forEach((button) => {
+      button.classList.toggle("active", button.dataset.view === "trainee");
+    });
+  }
+}
+
+function updateNavigationAccess() {
+  const traineeMode = currentRole === "trainee" && Boolean(currentTraineeId);
+  document.body.classList.toggle("trainee-mode", traineeMode);
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    const isTraineeView = button.dataset.view === "trainee";
+    button.hidden = traineeMode && !isTraineeView;
+  });
+
+  document.querySelector("#exportButton").hidden = traineeMode;
+  document.querySelector("#resetDataButton").hidden = traineeMode;
+}
+
+function renderOrganization() {
+  const center = state.center || defaultCenter;
+  const name = center.name || "Alliance";
+  document.querySelector("#brandName").textContent = name;
+  document.querySelector("#centerEyebrow").textContent = `Organisme ${name}`;
+
+  const mark = document.querySelector("#brandLogoMark");
+  mark.innerHTML = center.logo
+    ? `<img src="${center.logo}" alt="">`
+    : escapeHtml(name.slice(0, 1).toUpperCase() || "A");
+}
+
+function progressOf(learner) {
+  if (!learner.modules.length) {
+    return 0;
+  }
+
+  const done = learner.modules.filter((module) => module.done).length;
+  return Math.round((done / learner.modules.length) * 100);
+}
+
+function statusClass(status) {
+  return `status-${status.toLowerCase().replace("à", "a").replace(/\s+/g, "-")}`;
+}
+
+function renderDashboard() {
+  const learners = state.learners;
+  const active = learners.filter((learner) => learner.status === "Actif").length;
+  const atRisk = learners.filter((learner) => learner.status === "À risque" || learner.attendance < 70).length;
+  const averageProgress = learners.length
+    ? Math.round(learners.reduce((sum, learner) => sum + progressOf(learner), 0) / learners.length)
+    : 0;
+  const averageAttendance = learners.length
+    ? Math.round(learners.reduce((sum, learner) => sum + Number(learner.attendance), 0) / learners.length)
+    : 0;
+
+  metricGrid.innerHTML = [
+    ["Apprenants", learners.length],
+    ["Actifs", active],
+    ["Progression moyenne", `${averageProgress}%`],
+    ["Présence moyenne", `${averageAttendance}%`]
+  ].map(([label, value]) => `<article class="metric"><span>${label}</span><strong>${value}</strong></article>`).join("");
+
+  const risky = learners.filter((learner) => learner.status === "À risque" || learner.attendance < 70 || progressOf(learner) < 35);
+  riskCount.textContent = risky.length;
+  riskList.innerHTML = risky.length
+    ? risky.map((learner) => `
+      <article class="risk-item">
+        <strong>${learner.name}</strong>
+        <span>${learner.program} · présence ${learner.attendance}% · progression ${progressOf(learner)}%</span>
+      </article>
+    `).join("")
+    : `<div class="empty-state">Aucune situation critique pour le moment.</div>`;
+
+  const programs = groupPrograms(learners);
+  programList.innerHTML = programs.map((program) => `
+    <article class="program-item">
+      <strong>${program.name}</strong>
+      <span>${program.count} apprenant(s) · progression ${program.progress}%</span>
+      <div class="progress-track"><div class="progress-bar" style="width: ${program.progress}%"></div></div>
+    </article>
+  `).join("");
+}
+
+function groupPrograms(learners) {
+  const grouped = new Map();
+  learners.forEach((learner) => {
+    if (!grouped.has(learner.program)) {
+      grouped.set(learner.program, []);
+    }
+    grouped.get(learner.program).push(learner);
+  });
+
+  return [...grouped.entries()].map(([name, items]) => ({
+    name,
+    count: items.length,
+    progress: Math.round(items.reduce((sum, item) => sum + progressOf(item), 0) / items.length)
+  }));
+}
+
+function renderLearners() {
+  const query = searchInput.value.trim().toLowerCase();
+  const status = statusFilter.value;
+  const learners = state.learners.filter((learner) => {
+    const searchable = `${learner.name} ${learner.program} ${learner.coach}`.toLowerCase();
+    return searchable.includes(query) && (status === "all" || learner.status === status);
+  });
+
+  if (!learners.some((learner) => learner.id === selectedLearnerId)) {
+    selectedLearnerId = learners[0]?.id || state.learners[0]?.id || null;
+  }
+
+  learnerList.innerHTML = learners.length
+    ? learners.map((learner) => `
+      <button class="learner-card ${learner.id === selectedLearnerId ? "active" : ""}" type="button" data-id="${learner.id}">
+        <div class="learner-card-top">
+          <div>
+            <strong>${learner.name}</strong>
+            <div class="learner-meta">${learner.program} · ${learner.modality || "Présentiel"} · ${learner.coach}</div>
+          </div>
+          <span class="status-pill ${statusClass(learner.status)}">${learner.status}</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" style="width: ${progressOf(learner)}%"></div></div>
+        <div class="learner-meta">${progressOf(learner)}% validé · présence ${learner.attendance}%</div>
+      </button>
+    `).join("")
+    : `<div class="empty-state">Aucun apprenant ne correspond à cette recherche.</div>`;
+
+  learnerList.querySelectorAll(".learner-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      selectedLearnerId = card.dataset.id;
+      renderLearners();
+    });
+  });
+
+  renderDetail();
+}
+
+function renderDetail() {
+  const learner = state.learners.find((item) => item.id === selectedLearnerId);
+  const template = getProgramTemplate(learner?.program || "", learner?.modality || "Présentiel");
+  if (!learner) {
+    detailPanel.innerHTML = `<div class="empty-state">Sélectionnez une fiche pour voir le détail.</div>`;
+    return;
+  }
+
+  detailPanel.innerHTML = `
+    <div class="detail-title">
+      <div>
+        <h3>${learner.name}</h3>
+        <div class="learner-meta">${learner.program}</div>
+      </div>
+      <span class="status-pill ${statusClass(learner.status)}">${learner.status}</span>
+    </div>
+    <div class="detail-meta">
+      <div><span>Référent</span><strong>${learner.coach}</strong></div>
+      <div><span>Modalité</span><strong>${learner.modality || "Présentiel"}</strong></div>
+      <div><span>Entrée</span><strong>${formatDate(learner.startDate)}</strong></div>
+      <div><span>Présence</span><strong>${learner.attendance}%</strong></div>
+      <div><span>Progression</span><strong>${progressOf(learner)}%</strong></div>
+      <div><span>Code espace stagiaire</span><strong>${escapeHtml(learner.accessCode || generateAccessCode(learner.name))}</strong></div>
+    </div>
+    <label class="modality-editor">
+      <span>Changer la modalité</span>
+      <select id="detailModalitySelect">
+        ${["Présentiel", "Distanciel", "Hybride"].map((modality) => `
+          <option value="${modality}" ${modality === (learner.modality || "Présentiel") ? "selected" : ""}>${modality}</option>
+        `).join("")}
+      </select>
+    </label>
+    <h3>Modules</h3>
+    ${template ? `
+      <p class="helper-text">La modalité peut être changée sans modifier les compétences. Appliquez le référentiel seulement si vous voulez remplacer la liste actuelle.</p>
+      <button class="ghost-button template-button" id="applyTemplateButton" type="button">Appliquer le référentiel ${template.label} - ${template.modality}</button>
+    ` : ""}
+    <div class="module-list">
+      ${learner.modules.map((module, index) => `
+        <div class="module-item">
+          <label>
+            <input type="checkbox" data-module="${index}" ${module.done ? "checked" : ""}>
+            ${module.name}
+          </label>
+          <span>${module.done ? "Validé" : "À faire"}</span>
+        </div>
+      `).join("")}
+    </div>
+    <h3>Dernières notes</h3>
+    <div class="timeline">
+      ${learner.notes.slice(-3).reverse().map(noteTemplate).join("") || `<div class="empty-state">Aucune note enregistrée.</div>`}
+    </div>
+    <button class="danger-button" id="deleteLearnerButton" type="button">Supprimer ce stagiaire</button>
+  `;
+
+  detailPanel.querySelectorAll("[data-module]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      learner.modules[Number(checkbox.dataset.module)].done = checkbox.checked;
+      saveState();
+      render();
+    });
+  });
+
+  const applyTemplateButton = document.querySelector("#applyTemplateButton");
+  if (applyTemplateButton && template) {
+    applyTemplateButton.addEventListener("click", () => applyTemplate(learner.id, template));
+  }
+
+  document.querySelector("#detailModalitySelect").addEventListener("change", (event) => {
+    updateLearnerModality(learner.id, event.target.value);
+  });
+
+  document.querySelector("#deleteLearnerButton").addEventListener("click", () => deleteLearner(learner.id));
+}
+
+function renderFollowup() {
+  noteLearner.innerHTML = state.learners.map((learner) => `
+    <option value="${learner.id}">${learner.name}</option>
+  `).join("");
+
+  const notes = state.learners.flatMap((learner) => learner.notes.map((note) => ({ ...note, learnerName: learner.name })));
+  notes.sort((a, b) => b.date.localeCompare(a.date));
+
+  timeline.innerHTML = notes.length
+    ? notes.map((note) => noteTemplate(note, true)).join("")
+    : `<div class="empty-state">Le journal de suivi est vide.</div>`;
+}
+
+function renderMessages() {
+  if (!state.learners.some((learner) => learner.id === selectedMessageLearnerId)) {
+    selectedMessageLearnerId = state.learners[0]?.id || null;
+  }
+
+  messageLearnerList.innerHTML = state.learners.length
+    ? state.learners.map((learner) => `
+      <button class="message-learner ${learner.id === selectedMessageLearnerId ? "active" : ""}" type="button" data-id="${learner.id}">
+        <strong>${escapeHtml(learner.name)}</strong>
+        <span>${escapeHtml(learner.program)} · ${(learner.messages || []).length} message(s)</span>
+      </button>
+    `).join("")
+    : `<div class="empty-state">Aucun stagiaire disponible.</div>`;
+
+  messageLearnerList.querySelectorAll(".message-learner").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedMessageLearnerId = button.dataset.id;
+      renderMessages();
+    });
+  });
+
+  const learner = state.learners.find((item) => item.id === selectedMessageLearnerId);
+  if (!learner) {
+    chatHeading.innerHTML = `<h3>Aucune conversation</h3>`;
+    chatThread.innerHTML = `<div class="empty-state">Ajoutez un stagiaire pour démarrer une conversation.</div>`;
+    messageForm.hidden = true;
+    return;
+  }
+
+  messageForm.hidden = false;
+  chatHeading.innerHTML = `
+    <div>
+      <h3>${escapeHtml(learner.name)}</h3>
+      <span>${escapeHtml(learner.program)} · ${escapeHtml(learner.modality || "Présentiel")}</span>
+    </div>
+  `;
+
+  const messages = learner.messages || [];
+  chatThread.innerHTML = messages.length
+    ? messages.map((message) => `
+      <article class="chat-message ${message.sender === "Stagiaire" ? "from-learner" : message.sender === "Christophe" ? "from-ai" : "from-center"}">
+        <small>${escapeHtml(message.sender)} · ${formatDateTime(message.date)}</small>
+        <p>${escapeHtml(message.text)}</p>
+      </article>
+    `).join("")
+    : `<div class="empty-state">Aucun message pour le moment.</div>`;
+  chatThread.scrollTop = chatThread.scrollHeight;
+}
+
+function renderTraineeSpace() {
+  const learner = state.learners.find((item) => item.id === currentTraineeId);
+  traineeLoginForm.hidden = Boolean(learner);
+  traineeSpace.hidden = !learner;
+  traineeLogoutButton.hidden = !learner;
+
+  if (!learner) {
+    traineeSpace.innerHTML = "";
+    return;
+  }
+
+  const messages = learner.messages || [];
+  traineeSpace.innerHTML = `
+    <div class="trainee-header">
+      <div>
+        <p class="eyebrow">Bienvenue</p>
+        <h3>${escapeHtml(learner.name)}</h3>
+        <span>${escapeHtml(learner.program)} · ${escapeHtml(learner.modality || "Présentiel")}</span>
+      </div>
+      <strong>${progressOf(learner)}%</strong>
+    </div>
+
+    <div class="progress-track"><div class="progress-bar" style="width: ${progressOf(learner)}%"></div></div>
+
+    <div class="trainee-grid">
+      <section>
+        <h3>Mes compétences</h3>
+        <div class="module-list">
+          ${learner.modules.map((module) => `
+            <div class="module-item">
+              <span>${escapeHtml(module.name)}</span>
+              <strong>${module.done ? "Validé" : "À faire"}</strong>
+            </div>
+          `).join("")}
+        </div>
+      </section>
+
+      <section>
+        <h3>Messages avec le centre</h3>
+        <div class="chat-thread trainee-chat-thread">
+          ${messages.length
+            ? messages.map((message) => `
+              <article class="chat-message ${message.sender === "Stagiaire" ? "from-learner" : message.sender === "Christophe" ? "from-ai" : "from-center"}">
+                <small>${escapeHtml(message.sender)} · ${formatDateTime(message.date)}</small>
+                <p>${escapeHtml(message.text)}</p>
+              </article>
+            `).join("")
+            : `<div class="empty-state">Aucun message pour le moment.</div>`}
+        </div>
+        <form class="trainee-message-form" id="traineeMessageForm">
+          <label>
+            <span>Message au centre</span>
+            <textarea id="traineeMessageText" rows="3" placeholder="Écrire au centre..." required></textarea>
+          </label>
+          <button class="primary-button" type="submit">Envoyer au centre</button>
+        </form>
+      </section>
+    </div>
+  `;
+
+  document.querySelector("#traineeMessageForm").addEventListener("submit", sendTraineeMessage);
+}
+
+function renderCenter() {
+  const center = state.center || defaultCenter;
+  document.querySelector("#centerNameInput").value = center.name || "";
+  document.querySelector("#centerAddressInput").value = center.address || "";
+  document.querySelector("#centerPhoneInput").value = center.phone || "";
+  document.querySelector("#centerEmailInput").value = center.email || "";
+  document.querySelector("#adminReferentInput").value = center.adminReferent || "";
+  document.querySelector("#pedagogicalReferentInput").value = center.pedagogicalReferent || "";
+
+  centerPreview.innerHTML = `
+    <div class="center-card">
+      <div class="center-logo">
+        ${center.logo ? `<img src="${center.logo}" alt="Logo ${escapeHtml(center.name || "du centre")}">` : escapeHtml((center.name || "A").slice(0, 1).toUpperCase())}
+      </div>
+      <div>
+        <p class="eyebrow">Aperçu</p>
+        <h3>${escapeHtml(center.name || "Nom du centre")}</h3>
+      </div>
+      <div class="center-info-grid">
+        <div><span>Adresse</span><strong>${escapeHtml(center.address || "Non renseignée")}</strong></div>
+        <div><span>Téléphone</span><strong>${escapeHtml(center.phone || "Non renseigné")}</strong></div>
+        <div><span>E-mail</span><strong>${escapeHtml(center.email || "Non renseigné")}</strong></div>
+      </div>
+      <div class="referent-grid">
+        <div class="referent-box"><span>Référent administratif</span><strong>${escapeHtml(center.adminReferent || "Non renseigné")}</strong></div>
+        <div class="referent-box"><span>Référent pédagogique</span><strong>${escapeHtml(center.pedagogicalReferent || "Non renseigné")}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+function noteTemplate(note, showLearner = false) {
+  return `
+    <article class="timeline-item">
+      <small>${formatDate(note.date)} · ${note.type}${showLearner ? ` · ${note.learnerName}` : ""}</small>
+      <strong>${note.text}</strong>
+    </article>
+  `;
+}
+
+function addLearner(event) {
+  event.preventDefault();
+
+  const name = document.querySelector("#learnerName").value.trim();
+  const program = document.querySelector("#learnerProgram").value.trim();
+  const coach = document.querySelector("#learnerCoach").value.trim();
+  const modality = document.querySelector("#learnerModality").value;
+  const startDate = document.querySelector("#learnerStart").value;
+  const status = document.querySelector("#learnerStatus").value;
+  const attendance = Number(document.querySelector("#learnerAttendance").value);
+
+  const learner = {
+    id: crypto.randomUUID(),
+    name,
+    program,
+    coach,
+    modality,
+    startDate,
+    status,
+    attendance,
+    accessCode: generateAccessCode(name),
+    modules: modulesForProgram(program, modality),
+    notes: [],
+    messages: []
+  };
+
+  state.learners.unshift(learner);
+  selectedLearnerId = learner.id;
+  saveState();
+  learnerForm.reset();
+  learnerDialog.close();
+  setView("learners");
+  render();
+}
+
+function addNote(event) {
+  event.preventDefault();
+  const learner = state.learners.find((item) => item.id === noteLearner.value);
+  if (!learner) {
+    return;
+  }
+
+  learner.notes.push({
+    date: new Date().toISOString().slice(0, 10),
+    type: document.querySelector("#noteType").value,
+    text: document.querySelector("#noteText").value.trim()
+  });
+
+  document.querySelector("#noteText").value = "";
+  selectedLearnerId = learner.id;
+  saveState();
+  render();
+}
+
+function addMessage(event) {
+  event.preventDefault();
+  const learner = state.learners.find((item) => item.id === selectedMessageLearnerId);
+  const text = document.querySelector("#messageText").value.trim();
+  if (!learner || !text) {
+    return;
+  }
+
+  learner.messages = learner.messages || [];
+  learner.messages.push({
+    id: crypto.randomUUID(),
+    sender: document.querySelector("#messageSender").value,
+    text,
+    date: new Date().toISOString()
+  });
+
+  if (document.querySelector("#messageSender").value === "Stagiaire") {
+    addChristopheReply(learner, text).then(() => {
+      saveState();
+      renderMessages();
+    });
+  }
+
+  document.querySelector("#messageText").value = "";
+  saveState();
+  renderMessages();
+}
+
+function loginAdminSession(event) {
+  event.preventDefault();
+  const code = document.querySelector("#adminAccessCode").value.trim();
+  const helper = document.querySelector("#adminLoginHelp");
+
+  if (code !== ADMIN_CODE) {
+    helper.textContent = "Code admin incorrect.";
+    return;
+  }
+
+  currentRole = "admin";
+  currentTraineeId = null;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "admin" }));
+  document.querySelector("#adminAccessCode").value = "";
+  helper.textContent = "Code de test : ALLIANCE2026";
+  setView("dashboard");
+  render();
+}
+
+function loginPublicTraineeSession(event) {
+  event.preventDefault();
+  const code = normalizeAccessCode(document.querySelector("#publicTraineeAccessCode").value);
+  const helper = document.querySelector("#publicTraineeLoginHelp");
+  const learner = state.learners.find((item) => normalizeAccessCode(item.accessCode || generateAccessCode(item.name)) === code);
+
+  if (!learner) {
+    helper.textContent = "Code stagiaire introuvable.";
+    return;
+  }
+
+  currentRole = "trainee";
+  currentTraineeId = learner.id;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: learner.id }));
+  document.querySelector("#publicTraineeAccessCode").value = "";
+  helper.textContent = "Le code est remis par le centre.";
+  setView("trainee");
+  render();
+}
+
+function logoutSession() {
+  currentRole = null;
+  currentTraineeId = null;
+  sessionStorage.removeItem(SESSION_KEY);
+  document.body.classList.remove("trainee-mode");
+  render();
+}
+
+function loginTrainee(event) {
+  event.preventDefault();
+  const code = normalizeAccessCode(document.querySelector("#traineeAccessCode").value);
+  const learner = state.learners.find((item) => normalizeAccessCode(item.accessCode || generateAccessCode(item.name)) === code);
+  const helper = document.querySelector("#traineeLoginHelp");
+
+  if (!learner) {
+    helper.textContent = "Code introuvable. Vérifiez le code indiqué dans la fiche stagiaire.";
+    return;
+  }
+
+  currentTraineeId = learner.id;
+  currentRole = "trainee";
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: learner.id }));
+  document.querySelector("#traineeAccessCode").value = "";
+  helper.textContent = "Le code d'accès est visible dans la fiche du stagiaire côté centre.";
+  setView("trainee");
+  updateNavigationAccess();
+  renderTraineeSpace();
+}
+
+function logoutTrainee() {
+  logoutSession();
+}
+
+function sendTraineeMessage(event) {
+  event.preventDefault();
+  const learner = state.learners.find((item) => item.id === currentTraineeId);
+  const text = document.querySelector("#traineeMessageText").value.trim();
+  if (!learner || !text) {
+    return;
+  }
+
+  learner.messages = learner.messages || [];
+  learner.messages.push({
+    id: crypto.randomUUID(),
+    sender: "Stagiaire",
+    text,
+    date: new Date().toISOString()
+  });
+  addChristopheReply(learner, text).then(() => {
+    saveState();
+    renderMessages();
+    renderTraineeSpace();
+  });
+
+  saveState();
+  renderMessages();
+  renderTraineeSpace();
+}
+
+async function addChristopheReply(learner, messageText) {
+  const text = await getChristopheReply(learner, messageText);
+  learner.messages.push({
+    id: crypto.randomUUID(),
+    sender: "Christophe",
+    text,
+    date: new Date(Date.now() + 1000).toISOString()
+  });
+}
+
+async function getChristopheReply(learner, messageText) {
+  if (!isServerMode()) {
+    return buildChristopheReply(learner, messageText);
+  }
+
+  try {
+    const response = await fetch("/api/christophe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        learner: {
+          name: learner.name,
+          program: learner.program,
+          modality: learner.modality,
+          progress: progressOf(learner),
+          attendance: learner.attendance,
+          coach: learner.coach,
+          modules: learner.modules || [],
+          center: state.center || defaultCenter
+        },
+        message: messageText
+      })
+    });
+
+    if (!response.ok) {
+      return buildChristopheReply(learner, messageText);
+    }
+
+    const data = await response.json();
+    return data.reply || buildChristopheReply(learner, messageText);
+  } catch {
+    return buildChristopheReply(learner, messageText);
+  }
+}
+
+function buildChristopheReply(learner, messageText) {
+  const message = messageText.toLowerCase();
+  const progress = progressOf(learner);
+  const modules = learner.modules || [];
+  const pendingModules = modules.filter((module) => !module.done);
+  const doneModules = modules.filter((module) => module.done);
+  const nextModule = pendingModules[0];
+  const center = state.center || defaultCenter;
+  const pedagogicalReferent = center.pedagogicalReferent || learner.coach || "votre référent pédagogique";
+  const lessonAnswer = getOvpLessonAnswer(learner, message);
+
+  if (lessonAnswer) {
+    return lessonAnswer;
+  }
+
+  if (message.includes("absence") || message.includes("absent") || message.includes("retard")) {
+    return `Bonjour ${learner.name}. J'ai bien noté votre message. Votre taux de présence indiqué est de ${learner.attendance || 0}%. Si vous avez une absence ou un retard, envoyez la date et le motif au centre pour que ${pedagogicalReferent} puisse mettre votre suivi à jour.`;
+  }
+
+  if (message.includes("progression") || message.includes("avance") || message.includes("valid")) {
+    if (nextModule) {
+      return `Bonjour ${learner.name}. Votre progression actuelle est de ${progress}%. Vous avez ${doneModules.length} compétence(s) validée(s) sur ${modules.length}. La prochaine étape à travailler est : "${nextModule.name}". Quand vous pensez l'avoir terminée, signalez-le au centre pour validation.`;
+    }
+
+    return `Bonjour ${learner.name}. Votre progression est à ${progress}%. Toutes les compétences visibles semblent validées. Demandez au centre la confirmation finale de votre parcours.`;
+  }
+
+  if (message.includes("code") || message.includes("connexion") || message.includes("compte")) {
+    return `Bonjour ${learner.name}. Votre accès se fait avec le code indiqué dans votre fiche stagiaire. Si ce code ne fonctionne pas, contactez le référent administratif${center.adminReferent ? ` : ${center.adminReferent}` : ""}.`;
+  }
+
+  if (message.includes("difficile") || message.includes("difficulté") || message.includes("comprendre") || message.includes("aide") || message.includes("bloque")) {
+    const target = findRelevantModule(modules, message) || nextModule;
+    if (target) {
+      return `Bonjour ${learner.name}. Pour votre difficulté, concentrez-vous d'abord sur ce module : "${target.name}". Relisez les consignes, notez ce qui bloque en une phrase, puis envoyez cet élément au centre. Je vous conseille de demander un point court avec ${pedagogicalReferent}.`;
+    }
+
+    return `Bonjour ${learner.name}. Dites-moi sur quel module vous bloquez, par exemple "règles républicaines", "sites sensibles", "R82" ou "questionnaire OVP", et je vous orienterai plus précisément.`;
+  }
+
+  if (message.includes("stage") || message.includes("entreprise")) {
+    const stageModule = modules.find((module) => module.name.toLowerCase().includes("stage") || module.name.toLowerCase().includes("immersion"));
+    return `Bonjour ${learner.name}. Pour le stage en entreprise, vérifiez les dates, la convention et le contact entreprise avec le centre.${stageModule ? ` Dans votre suivi, l'étape concernée est : "${stageModule.name}".` : ""}`;
+  }
+
+  if (message.includes("r82") || message.includes("installation")) {
+    return `Bonjour ${learner.name}. Pour la partie R82, l'objectif est de comprendre les règles d'installation liées à la vidéosurveillance. Commencez par identifier les lieux filmés, les obligations d'information du public et les limites de conservation des images.`;
+  }
+
+  if (message.includes("site sensible") || message.includes("sites sensibles") || message.includes("importance vitale")) {
+    return `Bonjour ${learner.name}. Pour les sites sensibles et d'importance vitale, retenez surtout qu'ils demandent une vigilance renforcée, une application stricte des consignes et une transmission rapide des situations anormales aux interlocuteurs autorisés.`;
+  }
+
+  if (message.includes("républicain") || message.includes("republicain")) {
+    return `Bonjour ${learner.name}. Les règles républicaines concernent le respect des principes de la République, la neutralité, l'égalité de traitement, le respect des personnes et l'application du cadre légal dans votre mission.`;
+  }
+
+  if (nextModule) {
+    return `Bonjour ${learner.name}, c'est Christophe. J'ai bien reçu votre message. Dans votre parcours ${learner.program}, votre prochaine compétence à travailler est : "${nextModule.name}". Si votre question concerne ce module, précisez-moi ce qui bloque et je vous guiderai.`;
+  }
+
+  return `Bonjour ${learner.name}, c'est Christophe. J'ai bien reçu votre message. Votre progression est de ${progress}%. Posez-moi une question sur un module précis pour que je puisse vous répondre plus directement.`;
+}
+
+function findRelevantModule(modules, message) {
+  const keywords = message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 3);
+
+  return modules.find((module) => {
+    const normalized = module.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    return keywords.some((keyword) => normalized.includes(keyword));
+  });
+}
+
+function getOvpLessonAnswer(learner, message) {
+  const name = learner.name || "vous";
+
+  if (hasAny(message, ["site sensible", "sites sensibles", "importance vitale", "oiv", "sensible"])) {
+    return `Bonjour ${name}. Un site sensible est un lieu où un incident peut avoir des conséquences importantes : sécurité des personnes, continuité d'un service essentiel, ordre public ou activité stratégique. Un site d'importance vitale est encore plus critique : énergie, transport, santé, télécommunications, eau, défense, etc. Pour un opérateur en vidéoprotection, cela veut dire : appliquer strictement les consignes du site, repérer rapidement une situation anormale, ne pas diffuser les images, tracer les événements et alerter uniquement les personnes autorisées.`;
+  }
+
+  if (hasAny(message, ["r82", "installation", "installer", "regle d'installation", "règle d'installation"])) {
+    return `Bonjour ${name}. La partie R82 concerne les règles techniques d'installation d'un système de vidéosurveillance. L'idée principale : les caméras doivent être placées pour répondre à un objectif de sécurité précis, sans filmer inutilement des zones privées ou non autorisées. Il faut aussi penser à la qualité des images, à l'information du public, à la conservation limitée des images et à la sécurité d'accès au système.`;
+  }
+
+  if (hasAny(message, ["regles republicaines", "règles républicaines", "republique", "république", "laicite", "laïcité"])) {
+    return `Bonjour ${name}. Les règles républicaines, dans votre formation, renvoient aux principes à respecter dans une mission de sécurité : égalité de traitement, neutralité, respect de la loi, respect des libertés individuelles, dignité des personnes et non-discrimination. En vidéoprotection, cela signifie observer une situation sans jugement personnel et agir uniquement dans le cadre légal et les consignes professionnelles.`;
+  }
+
+  if (hasAny(message, ["cadre legal", "cadre légal", "loi", "juridique", "code", "csi", "code penal", "code pénal"])) {
+    return `Bonjour ${name}. Le cadre légal fixe ce que l'opérateur peut faire et ne peut pas faire. Vous devez connaître les limites : seules les personnes habilitées peuvent accéder aux images, les images ne doivent pas être utilisées à des fins personnelles, leur conservation est limitée, et toute alerte doit suivre les consignes prévues. Le livre VI du CSI encadre les activités de sécurité privée, tandis que le code pénal rappelle les infractions et responsabilités possibles.`;
+  }
+
+  if (hasAny(message, ["conservation", "images", "rgpd", "confidentialite", "confidentialité"])) {
+    return `Bonjour ${name}. Pour la conservation des images, retenez trois idées : accès limité aux personnes autorisées, durée de conservation limitée, et confidentialité stricte. Un opérateur ne copie pas, ne partage pas et ne commente pas les images en dehors du cadre prévu. Toute consultation ou événement important doit pouvoir être tracé.`;
+  }
+
+  if (hasAny(message, ["questionnaire", "qcm", "quiz", "examen", "evaluation", "évaluation"])) {
+    return `Bonjour ${name}. Pour préparer le questionnaire OVP, révisez en priorité : règles républicaines, sites sensibles, cadre légal de la vidéoprotection, conservation des images, rôle de l'opérateur, règles d'installation R82 et procédure d'alerte. Une bonne méthode : pour chaque thème, écrivez une définition simple, un exemple concret et ce que l'opérateur doit faire.`;
+  }
+
+  if (hasAny(message, ["alerte", "situation anormale", "incident", "conflit", "secours"])) {
+    return `Bonjour ${name}. Face à une situation anormale, l'opérateur doit observer, qualifier la situation, garder son calme, suivre les consignes du site, alerter le bon interlocuteur et noter les faits de manière précise. Il ne faut pas improviser ni transmettre l'information à une personne non habilitée.`;
+  }
+
+  return "";
+}
+
+function hasAny(text, terms) {
+  return terms.some((term) => text.includes(term));
+}
+
+function saveCenter(event) {
+  event.preventDefault();
+
+  state.center = {
+    ...(state.center || defaultCenter),
+    name: document.querySelector("#centerNameInput").value.trim() || "Alliance",
+    address: document.querySelector("#centerAddressInput").value.trim(),
+    phone: document.querySelector("#centerPhoneInput").value.trim(),
+    email: document.querySelector("#centerEmailInput").value.trim(),
+    adminReferent: document.querySelector("#adminReferentInput").value.trim(),
+    pedagogicalReferent: document.querySelector("#pedagogicalReferentInput").value.trim()
+  };
+
+  saveState();
+  render();
+}
+
+function updateCenterLogo(event) {
+  const file = event.target.files[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    state.center = {
+      ...(state.center || defaultCenter),
+      logo: reader.result
+    };
+    saveState();
+    render();
+  });
+  reader.readAsDataURL(file);
+}
+
+function exportCsv() {
+  const headers = ["Nom", "Formation", "Modalité", "Référent", "Date entrée", "Statut", "Présence", "Progression"];
+  const rows = state.learners.map((learner) => [
+    learner.name,
+    learner.program,
+    learner.modality || "Présentiel",
+    learner.coach,
+    learner.startDate,
+    learner.status,
+    `${learner.attendance}%`,
+    `${progressOf(learner)}%`
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "suivi-apprentissage-alliance.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetData() {
+  if (!confirm("Réinitialiser les données d'exemple ?")) {
+    return;
+  }
+
+  localStorage.removeItem(STORAGE_KEY);
+  state = { learners: structuredClone(defaultLearners), center: state.center || defaultCenter };
+  selectedLearnerId = state.learners[0]?.id || null;
+  saveState();
+  render();
+}
+
+function deleteLearner(learnerId) {
+  const learner = state.learners.find((item) => item.id === learnerId);
+  if (!learner || !confirm(`Supprimer la fiche de ${learner.name} ?`)) {
+    return;
+  }
+
+  state.learners = state.learners.filter((item) => item.id !== learnerId);
+  selectedLearnerId = state.learners[0]?.id || null;
+  saveState();
+  render();
+}
+
+function updateLearnerModality(learnerId, modality) {
+  const learner = state.learners.find((item) => item.id === learnerId);
+  if (!learner) {
+    return;
+  }
+
+  learner.modality = modality;
+  saveState();
+  render();
+}
+
+function getProgramTemplate(program, modality = "Présentiel") {
+  const normalized = program.toLowerCase();
+  const normalizedModality = modality.toLowerCase();
+  if (normalized.includes("ovp") || normalized.includes("vidéoprotection") || normalized.includes("video protection")) {
+    if (normalizedModality === "présentiel") {
+      return programTemplates.ovp;
+    }
+
+    if (normalizedModality === "distanciel") {
+      return programTemplates.ovpDistance;
+    }
+
+    if (normalizedModality === "hybride") {
+      return {
+        label: programTemplates.ovp.label,
+        modality: "Hybride",
+        modules: [
+          ...programTemplates.ovp.modules.map((module) => ({ ...module, name: `Présentiel : ${module.name}` })),
+          ...programTemplates.ovpDistance.modules
+        ]
+      };
+    }
+  }
+
+  return null;
+}
+
+function modulesForProgram(program, modality) {
+  const template = getProgramTemplate(program, modality);
+  if (template) {
+    return structuredClone(template.modules);
+  }
+
+  return [
+    { name: "Diagnostic initial", done: true },
+    { name: "Compétence 1", done: false },
+    { name: "Compétence 2", done: false },
+    { name: "Bilan final", done: false }
+  ];
+}
+
+function applyTemplate(learnerId, template) {
+  const learner = state.learners.find((item) => item.id === learnerId);
+  if (!learner || !confirm("Remplacer les modules actuels par le référentiel OVP ?")) {
+    return;
+  }
+
+  learner.modules = structuredClone(template.modules);
+  saveState();
+  render();
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+function formatDateTime(value) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function generateAccessCode(name) {
+  const clean = (name || "STAGIAIRE")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z]/g, "")
+    .toUpperCase();
+  const prefix = (clean.slice(0, 4) || "STAG").padEnd(4, "X");
+  let hash = 0;
+  for (const character of clean) {
+    hash = (hash * 31 + character.charCodeAt(0)) % 10000;
+  }
+
+  return `${prefix}-${String(hash).padStart(4, "0")}`;
+}
+
+function normalizeAccessCode(code) {
+  return String(code || "").trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+if ("serviceWorker" in navigator && isServerMode()) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // The application still works normally when install support is unavailable.
+    });
+  });
+}
