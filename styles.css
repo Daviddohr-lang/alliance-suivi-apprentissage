@@ -436,6 +436,29 @@ label span,
   background: var(--surface-strong);
 }
 
+.detail-meta div,
+.trainer-info-grid div,
+.tutor-info-grid div,
+.center-info-grid div,
+.referent-box,
+.linked-tutor,
+.profile-home-metrics div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+}
+
+.detail-meta span::after,
+.trainer-info-grid span::after,
+.tutor-info-grid span::after,
+.center-info-grid span::after,
+.referent-box span::after,
+.linked-tutor span::after,
+.profile-home-metrics span::after {
+  content: " :";
+}
+
 .profile-home-metrics span,
 .profile-home-list span {
   color: var(--muted);
@@ -736,8 +759,6 @@ textarea {
 }
 
 .trainer-info-grid strong {
-  display: block;
-  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 
@@ -829,8 +850,6 @@ textarea {
 
 .tutor-info-grid strong,
 .linked-tutor strong {
-  display: block;
-  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 
@@ -840,6 +859,7 @@ textarea {
 }
 
 .linked-tutor p {
+  flex-basis: 100%;
   margin: 4px 0 0;
   color: var(--muted);
   overflow-wrap: anywhere;
@@ -1106,15 +1126,12 @@ textarea {
 
 .center-info-grid span,
 .referent-box span {
-  display: block;
   color: var(--muted);
   font-size: 0.82rem;
 }
 
 .center-info-grid strong,
 .referent-box strong {
-  display: block;
-  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 
