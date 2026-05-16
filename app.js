@@ -1339,11 +1339,13 @@ function addMessage(event) {
   renderMessages();
 }
 
-function loginProfileSession(event) {
+async function loginProfileSession(event) {
   event.preventDefault();
   const role = document.querySelector("#profileLoginRole").value;
   const code = normalizeAccessCode(document.querySelector("#profileAccessCode").value);
   const helper = document.querySelector("#profileLoginHelp");
+  helper.textContent = "Vérification du code...";
+  await loadServerState();
   const access = findAccessByCode(code, role) || findAccessByCode(code);
 
   if (!access) {

@@ -86,13 +86,18 @@ async function serveStatic(requestPath, response) {
   try {
     const content = await fs.readFile(filePath);
     response.writeHead(200, {
-      "Content-Type": mimeTypes[path.extname(filePath)] || "application/octet-stream"
+      "Content-Type": mimeTypes[path.extname(filePath)] || "application/octet-stream",
+      "Cache-Control": shouldDisableCache(filePath) ? "no-store" : "public, max-age=3600"
     });
     response.end(content);
   } catch {
     response.writeHead(404);
     response.end("Not found");
   }
+}
+
+function shouldDisableCache(filePath) {
+  return [".html", ".js", ".css"].includes(path.extname(filePath));
 }
 
 async function answerWithChristophe({ learner = {}, message = "" }) {
