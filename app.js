@@ -322,6 +322,9 @@ document.querySelector("#openFormButton").addEventListener("click", () => learne
 document.querySelector("#closeDialogButton").addEventListener("click", () => learnerDialog.close());
 document.querySelector("#cancelFormButton").addEventListener("click", () => learnerDialog.close());
 document.querySelector("#exportButton").addEventListener("click", exportCsv);
+document.querySelector("#exportBackupButton").addEventListener("click", exportBackup);
+document.querySelector("#importBackupButton").addEventListener("click", () => document.querySelector("#importBackupInput").click());
+document.querySelector("#importBackupInput").addEventListener("change", importBackup);
 document.querySelector("#resetDataButton").addEventListener("click", resetData);
 logoutButton.addEventListener("click", logoutSession);
 searchInput.addEventListener("input", renderLearners);
@@ -559,6 +562,8 @@ function updateNavigationAccess() {
   });
 
   document.querySelector("#exportButton").hidden = currentRole !== "admin";
+  document.querySelector("#exportBackupButton").hidden = currentRole !== "admin";
+  document.querySelector("#importBackupButton").hidden = currentRole !== "admin";
   document.querySelector("#resetDataButton").hidden = currentRole !== "admin";
   trainerForm.hidden = currentRole !== "admin";
   tutorForm.hidden = currentRole !== "admin";
@@ -1725,6 +1730,64 @@ function exportCsv() {
   link.download = "suivi-apprentissage-alliance.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function exportBackup() {
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    app: "Alliance suivi apprentissage",
+    version: 1,
+    state
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `sauvegarde-alliance-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      const importedState = parsed.state || parsed;
+      if (!importedState || !Array.isArray(importedState.learners)) {
+        throw new Error("Invalid backup");
+      }
+
+      if (!confirm("Importer cette sauvegarde ? Les données actuelles seront remplacées.")) {
+        return;
+      }
+
+      state = {
+        learners: importedState.learners.map(normalizeLearner),
+        trainers: normalizeTrainers(importedState.trainers || []),
+        tutors: normalizeTutors(importedState.tutors || []),
+        center: { ...defaultCenter, ...(importedState.center || {}) }
+      };
+      selectedLearnerId = state.learners[0]?.id || null;
+      selectedMessageLearnerId = state.learners[0]?.id || null;
+      currentTraineeId = null;
+      currentTrainerId = null;
+      currentTutorId = null;
+      saveState();
+      setView("dashboard");
+      render();
+    } catch {
+      alert("La sauvegarde n'a pas pu être importée. Vérifiez le fichier JSON.");
+    } finally {
+      event.target.value = "";
+    }
+  });
+  reader.readAsText(file);
 }
 
 function resetData() {
