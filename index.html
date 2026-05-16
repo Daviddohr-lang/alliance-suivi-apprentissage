@@ -69,6 +69,10 @@
             <span aria-hidden="true">◉</span>
             Apprenants
           </button>
+          <button class="nav-item" data-view="trainers" type="button">
+            <span aria-hidden="true">◫</span>
+            Formateurs
+          </button>
           <button class="nav-item" data-view="tutors" type="button">
             <span aria-hidden="true">☏</span>
             Tuteurs
@@ -183,6 +187,62 @@
           <div class="content-grid">
             <div class="learner-list" id="learnerList"></div>
             <aside class="detail-panel" id="detailPanel"></aside>
+          </div>
+        </section>
+
+        <section class="view" id="trainersView" aria-labelledby="trainersTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="trainersTitle">Formateurs</h2>
+              <p>Créez les profils pédagogiques qui renseigneront les présences, évaluations et compétences.</p>
+            </div>
+          </div>
+
+          <div class="trainers-layout">
+            <form class="panel trainer-form" id="trainerForm">
+              <h3>Ajouter un formateur</h3>
+              <div class="form-grid compact">
+                <label>
+                  <span>Nom</span>
+                  <input id="trainerLastName" required placeholder="Ex. Martin">
+                </label>
+                <label>
+                  <span>Prénom</span>
+                  <input id="trainerFirstName" required placeholder="Ex. Claire">
+                </label>
+              </div>
+              <label>
+                <span>Spécialité pédagogique</span>
+                <input id="trainerSpecialty" placeholder="Ex. OVP - Vidéoprotection">
+              </label>
+              <div class="form-grid compact">
+                <label>
+                  <span>Téléphone</span>
+                  <input id="trainerPhone" placeholder="Ex. 06 12 34 56 78">
+                </label>
+                <label>
+                  <span>E-mail</span>
+                  <input id="trainerEmail" type="email" placeholder="formateur@alliance.fr">
+                </label>
+              </div>
+              <label>
+                <span>Stagiaires suivis</span>
+                <select id="trainerLearners" multiple></select>
+              </label>
+              <label>
+                <span>Notes pédagogiques</span>
+                <textarea id="trainerNotes" rows="4" placeholder="Observations, modules assurés, préparation examen..."></textarea>
+              </label>
+              <button class="primary-button" type="submit">Enregistrer le formateur</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Équipe pédagogique</h3>
+                <span id="trainerCount">0</span>
+              </div>
+              <div class="trainer-list" id="trainerList"></div>
+            </section>
           </div>
         </section>
 

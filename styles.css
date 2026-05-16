@@ -294,6 +294,7 @@ h3 {
 .panel,
 .learner-card,
 .profile-card,
+.trainer-card,
 .detail-panel,
 .toolbar {
   border: 1px solid var(--line);
@@ -323,6 +324,7 @@ label span,
 
 .dashboard-grid,
 .profile-grid,
+.trainers-layout,
 .followup-layout,
 .content-grid,
 .messages-layout,
@@ -595,6 +597,74 @@ textarea {
 .messages-layout {
   grid-template-columns: minmax(260px, 0.7fr) minmax(420px, 1.3fr);
   align-items: start;
+}
+
+.trainers-layout {
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  align-items: start;
+}
+
+.trainer-form,
+.trainer-list {
+  display: grid;
+  gap: 14px;
+}
+
+.trainer-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.trainer-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trainer-card-top strong,
+.trainer-card-top span {
+  display: block;
+}
+
+.trainer-card-top span,
+.trainer-info-grid span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.trainer-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trainer-info-grid div {
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.trainer-info-grid strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.trainer-learners {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trainer-learners span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e9f0ed;
+  color: #24423a;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .tutors-layout {
@@ -1010,6 +1080,7 @@ dialog::backdrop {
   .metric-grid,
   .dashboard-grid,
     .profile-grid,
+    .trainers-layout,
     .content-grid,
     .followup-layout,
     .messages-layout,
@@ -1081,6 +1152,7 @@ dialog::backdrop {
   .chat-form,
   .tutor-message-form,
   .detail-meta,
+  .trainer-info-grid,
   .tutor-info-grid,
   .center-info-grid,
   .referent-grid {

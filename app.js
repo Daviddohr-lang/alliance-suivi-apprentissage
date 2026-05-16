@@ -136,6 +136,20 @@ const defaultTutors = [
   }
 ];
 
+const defaultTrainers = [
+  {
+    id: crypto.randomUUID(),
+    firstName: "Claire",
+    lastName: "Durand",
+    specialty: "OVP - Vidéoprotection",
+    phone: "06 00 00 00 01",
+    email: "formateur@alliance.fr",
+    learnerIds: [defaultLearners[0].id],
+    notes: "Référente pédagogique OVP. Suit les présences, compétences et préparation examen.",
+    accessCode: "FORM-2026"
+  }
+];
+
 const profileAccess = [
   {
     title: "Centre de formation / Alliance",
@@ -213,6 +227,7 @@ const views = {
   dashboard: document.querySelector("#dashboardView"),
   profiles: document.querySelector("#profilesView"),
   learners: document.querySelector("#learnersView"),
+  trainers: document.querySelector("#trainersView"),
   tutors: document.querySelector("#tutorsView"),
   followup: document.querySelector("#followupView"),
   messages: document.querySelector("#messagesView"),
@@ -233,6 +248,10 @@ const timeline = document.querySelector("#timeline");
 const noteLearner = document.querySelector("#noteLearner");
 const learnerDialog = document.querySelector("#learnerDialog");
 const learnerForm = document.querySelector("#learnerForm");
+const trainerForm = document.querySelector("#trainerForm");
+const trainerLearners = document.querySelector("#trainerLearners");
+const trainerList = document.querySelector("#trainerList");
+const trainerCount = document.querySelector("#trainerCount");
 const tutorForm = document.querySelector("#tutorForm");
 const tutorLearner = document.querySelector("#tutorLearner");
 const tutorList = document.querySelector("#tutorList");
@@ -267,6 +286,7 @@ logoutButton.addEventListener("click", logoutSession);
 searchInput.addEventListener("input", renderLearners);
 statusFilter.addEventListener("change", renderLearners);
 learnerForm.addEventListener("submit", addLearner);
+trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
 noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
@@ -290,22 +310,23 @@ async function initializeApp() {
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    return { learners: defaultLearners, tutors: defaultTutors, center: defaultCenter };
+    return { learners: defaultLearners, trainers: defaultTrainers, tutors: defaultTutors, center: defaultCenter };
   }
 
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.learners)) {
-      return { learners: defaultLearners, tutors: defaultTutors, center: defaultCenter };
+      return { learners: defaultLearners, trainers: defaultTrainers, tutors: defaultTutors, center: defaultCenter };
     }
 
     return {
       learners: parsed.learners.map(normalizeLearner),
+      trainers: normalizeTrainers(parsed.trainers || []),
       tutors: normalizeTutors(parsed.tutors || []),
       center: { ...defaultCenter, ...(parsed.center || {}) }
     };
   } catch {
-    return { learners: defaultLearners, tutors: defaultTutors, center: defaultCenter };
+    return { learners: defaultLearners, trainers: defaultTrainers, tutors: defaultTutors, center: defaultCenter };
   }
 }
 
@@ -365,6 +386,20 @@ function normalizeTutors(tutors) {
   }));
 }
 
+function normalizeTrainers(trainers) {
+  return trainers.map((trainer) => ({
+    id: trainer.id || crypto.randomUUID(),
+    firstName: trainer.firstName || splitTutorName(trainer.name).firstName,
+    lastName: trainer.lastName || splitTutorName(trainer.name).lastName,
+    specialty: trainer.specialty || "",
+    phone: trainer.phone || "",
+    email: trainer.email || "",
+    learnerIds: Array.isArray(trainer.learnerIds) ? trainer.learnerIds : [],
+    notes: trainer.notes || "",
+    accessCode: trainer.accessCode || generateProfileCode("FORM", `${trainer.firstName || ""} ${trainer.lastName || trainer.name || ""}`)
+  }));
+}
+
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   saveServerState();
@@ -389,6 +424,7 @@ async function loadServerState() {
 
     state = {
       learners: serverState.learners.map(normalizeLearner),
+      trainers: normalizeTrainers(serverState.trainers || []),
       tutors: normalizeTutors(serverState.tutors || []),
       center: { ...defaultCenter, ...(serverState.center || {}) }
     };
@@ -436,6 +472,7 @@ function render() {
   renderDashboard();
   renderProfiles();
   renderLearners();
+  renderTrainers();
   renderTutors();
   renderFollowup();
   renderMessages();
@@ -567,6 +604,51 @@ function renderProfiles() {
       </div>
     </article>
   `).join("");
+}
+
+function renderTrainers() {
+  const trainers = state.trainers || [];
+  trainerLearners.innerHTML = state.learners.length
+    ? state.learners.map((learner) => `<option value="${learner.id}">${escapeHtml(learner.name)} - ${escapeHtml(learner.program)}</option>`).join("")
+    : `<option value="">Ajoutez d'abord un stagiaire</option>`;
+  trainerLearners.disabled = !state.learners.length;
+  trainerForm.querySelector("button[type='submit']").disabled = !state.learners.length;
+  trainerCount.textContent = trainers.length;
+
+  trainerList.innerHTML = trainers.length
+    ? trainers.map((trainer) => {
+      const learners = trainer.learnerIds
+        .map((id) => state.learners.find((learner) => learner.id === id))
+        .filter(Boolean);
+      return `
+        <article class="trainer-card">
+          <div class="trainer-card-top">
+            <div>
+              <strong>${escapeHtml(personFullName(trainer) || "Formateur sans nom")}</strong>
+              <span>${escapeHtml(trainer.specialty || "Spécialité non renseignée")}</span>
+            </div>
+            <button class="danger-link" type="button" data-delete-trainer="${trainer.id}">Supprimer</button>
+          </div>
+          <div class="trainer-info-grid">
+            <div><span>Code accès formateur</span><strong>${escapeHtml(trainer.accessCode)}</strong></div>
+            <div><span>Téléphone</span><strong>${escapeHtml(trainer.phone || "Non renseigné")}</strong></div>
+            <div><span>E-mail</span><strong>${escapeHtml(trainer.email || "Non renseigné")}</strong></div>
+            <div><span>Stagiaires suivis</span><strong>${learners.length}</strong></div>
+          </div>
+          <div class="trainer-learners">
+            ${learners.length
+              ? learners.map((learner) => `<span>${escapeHtml(learner.name)} · ${escapeHtml(learner.program)}</span>`).join("")
+              : `<span>Aucun stagiaire rattaché</span>`}
+          </div>
+          <p>${escapeHtml(trainer.notes || "Aucune note pédagogique.")}</p>
+        </article>
+      `;
+    }).join("")
+    : `<div class="empty-state">Aucun formateur enregistré pour le moment.</div>`;
+
+  trainerList.querySelectorAll("[data-delete-trainer]").forEach((button) => {
+    button.addEventListener("click", () => deleteTrainer(button.dataset.deleteTrainer));
+  });
 }
 
 function renderLearners() {
@@ -952,6 +1034,32 @@ function addLearner(event) {
   learnerForm.reset();
   learnerDialog.close();
   setView("learners");
+  render();
+}
+
+function addTrainer(event) {
+  event.preventDefault();
+  const learnerIds = [...trainerLearners.selectedOptions].map((option) => option.value).filter(Boolean);
+  const firstName = document.querySelector("#trainerFirstName").value.trim();
+  const lastName = document.querySelector("#trainerLastName").value.trim();
+
+  const trainer = {
+    id: crypto.randomUUID(),
+    firstName,
+    lastName,
+    specialty: document.querySelector("#trainerSpecialty").value.trim(),
+    phone: document.querySelector("#trainerPhone").value.trim(),
+    email: document.querySelector("#trainerEmail").value.trim(),
+    learnerIds,
+    notes: document.querySelector("#trainerNotes").value.trim(),
+    accessCode: generateProfileCode("FORM", `${firstName} ${lastName}`)
+  };
+
+  state.trainers = state.trainers || [];
+  state.trainers.unshift(trainer);
+  saveState();
+  trainerForm.reset();
+  setView("trainers");
   render();
 }
 
@@ -1392,7 +1500,7 @@ function resetData() {
   }
 
   localStorage.removeItem(STORAGE_KEY);
-  state = { learners: structuredClone(defaultLearners), tutors: structuredClone(defaultTutors), center: state.center || defaultCenter };
+  state = { learners: structuredClone(defaultLearners), trainers: structuredClone(defaultTrainers), tutors: structuredClone(defaultTutors), center: state.center || defaultCenter };
   selectedLearnerId = state.learners[0]?.id || null;
   saveState();
   render();
@@ -1405,8 +1513,23 @@ function deleteLearner(learnerId) {
   }
 
   state.learners = state.learners.filter((item) => item.id !== learnerId);
+  state.trainers = (state.trainers || []).map((trainer) => ({
+    ...trainer,
+    learnerIds: trainer.learnerIds.filter((id) => id !== learnerId)
+  }));
   state.tutors = (state.tutors || []).filter((item) => item.learnerId !== learnerId);
   selectedLearnerId = state.learners[0]?.id || null;
+  saveState();
+  render();
+}
+
+function deleteTrainer(trainerId) {
+  const trainer = (state.trainers || []).find((item) => item.id === trainerId);
+  if (!trainer || !confirm(`Supprimer le formateur ${personFullName(trainer) || "sélectionné"} ?`)) {
+    return;
+  }
+
+  state.trainers = (state.trainers || []).filter((item) => item.id !== trainerId);
   saveState();
   render();
 }
@@ -1513,6 +1636,20 @@ function generateAccessCode(name) {
   return `${prefix}-${String(hash).padStart(4, "0")}`;
 }
 
+function generateProfileCode(prefix, name) {
+  const clean = (name || prefix)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z]/g, "")
+    .toUpperCase();
+  let hash = 0;
+  for (const character of clean) {
+    hash = (hash * 29 + character.charCodeAt(0)) % 10000;
+  }
+
+  return `${prefix}-${String(hash).padStart(4, "0")}`;
+}
+
 function splitTutorName(name = "") {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) {
@@ -1531,6 +1668,10 @@ function splitTutorName(name = "") {
 
 function tutorFullName(tutor) {
   return [tutor.firstName, tutor.lastName].filter(Boolean).join(" ").trim();
+}
+
+function personFullName(person) {
+  return [person.firstName, person.lastName].filter(Boolean).join(" ").trim();
 }
 
 function normalizeAccessCode(code) {
