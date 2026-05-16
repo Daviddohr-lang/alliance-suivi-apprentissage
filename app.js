@@ -216,15 +216,7 @@ const profileHomePages = [
   {
     title: "Alliance",
     subtitle: "Tableau de bord global",
-    type: "metrics",
-    items: [
-      ["Apprentis actifs", "18"],
-      ["Dossiers incomplets", "3"],
-      ["Alertes assiduité", "2"],
-      ["Alertes entreprise", "1"],
-      ["Examens à venir", "4"],
-      ["Visites tuteur à planifier", "5"]
-    ]
+    type: "metrics"
   },
   {
     title: "Formateur",
@@ -652,30 +644,61 @@ function renderProfiles() {
     </article>
   `).join("");
 
-  profileHomeGrid.innerHTML = profileHomePages.map((home) => `
-    <article class="profile-home-card">
-      <div class="profile-card-heading">
-        <div>
-          <h3>${escapeHtml(home.title)}</h3>
-          <p>${escapeHtml(home.subtitle)}</p>
+  profileHomeGrid.innerHTML = profileHomePages.map((home) => {
+    const items = getProfileHomeItems(home);
+
+    return `
+      <article class="profile-home-card">
+        <div class="profile-card-heading">
+          <div>
+            <h3>${escapeHtml(home.title)}</h3>
+            <p>${escapeHtml(home.subtitle)}</p>
+          </div>
         </div>
-      </div>
-      ${home.type === "metrics" ? `
-        <div class="profile-home-metrics">
-          ${home.items.map(([label, value]) => `
-            <div>
-              <span>${escapeHtml(label)}</span>
-              <strong>${escapeHtml(value)}</strong>
-            </div>
-          `).join("")}
-        </div>
-      ` : `
-        <div class="profile-home-list">
-          ${home.items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-        </div>
-      `}
-    </article>
-  `).join("");
+        ${home.type === "metrics" ? `
+          <div class="profile-home-metrics">
+            ${items.map(([label, value]) => `
+              <div>
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(value)}</strong>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="profile-home-list">
+            ${items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+          </div>
+        `}
+      </article>
+    `;
+  }).join("");
+}
+
+function getProfileHomeItems(home) {
+  if (home.type === "metrics") {
+    return getAllianceHomeMetrics();
+  }
+
+  return home.items;
+}
+
+function getAllianceHomeMetrics() {
+  const learners = state.learners || [];
+  const tutors = state.tutors || [];
+  const activeLearners = learners.filter((learner) => learner.status === "Actif").length;
+  const attendanceAlerts = learners.filter((learner) => Number(learner.attendance) < 70 || learner.status === "À risque").length;
+  const incompleteFiles = learners.filter((learner) => !learner.program || !learner.coach || !learner.startDate || !tutors.some((tutor) => tutor.learnerId === learner.id)).length;
+  const companyAlerts = tutors.filter((tutor) => /alerte|difficult|absence|retard|incident/i.test(`${tutor.notes || ""} ${(tutor.messages || []).map((message) => message.text).join(" ")}`)).length;
+  const tutorVisitsToPlan = learners.filter((learner) => !tutors.some((tutor) => tutor.learnerId === learner.id)).length;
+
+  return [
+    ["Apprentis actifs", activeLearners],
+    ["Dossiers incomplets", incompleteFiles],
+    ["Alertes assiduité", attendanceAlerts],
+    ["Alertes entreprise", companyAlerts],
+    ["Examens à venir", 0],
+    ["Visites tuteur à planifier", tutorVisitsToPlan]
+  ];
 }
 
 function renderTrainers() {
