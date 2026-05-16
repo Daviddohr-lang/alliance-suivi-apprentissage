@@ -1344,96 +1344,88 @@ function loginProfileSession(event) {
   const role = document.querySelector("#profileLoginRole").value;
   const code = normalizeAccessCode(document.querySelector("#profileAccessCode").value);
   const helper = document.querySelector("#profileLoginHelp");
+  const access = findAccessByCode(code, role) || findAccessByCode(code);
 
-  if (role === "admin") {
-    loginAdminWithCode(code, helper);
+  if (!access) {
+    helper.textContent = "Code introuvable. Vérifiez le profil choisi ou le code remis par Alliance.";
     return;
   }
 
-  if (role === "trainer") {
-    loginTrainerWithCode(code, helper);
-    return;
-  }
-
-  if (role === "tutor") {
-    loginTutorWithCode(code, helper);
-    return;
-  }
-
-  loginTraineeWithCode(code, helper);
+  applyLoginAccess(access, helper);
 }
 
-function loginAdminWithCode(code, helper) {
-  if (code !== normalizeAccessCode(ADMIN_CODE)) {
-    helper.textContent = "Code admin incorrect.";
+function findAccessByCode(code, preferredRole = "") {
+  if ((!preferredRole || preferredRole === "admin") && code === normalizeAccessCode(ADMIN_CODE)) {
+    return { role: "admin" };
+  }
+
+  if (!preferredRole || preferredRole === "trainer") {
+    const trainer = (state.trainers || []).find((item) => normalizeAccessCode(item.accessCode) === code);
+    if (trainer) {
+      return { role: "trainer", trainerId: trainer.id };
+    }
+  }
+
+  if (!preferredRole || preferredRole === "tutor") {
+    const tutor = (state.tutors || []).find((item) => normalizeAccessCode(item.accessCode) === code);
+    if (tutor) {
+      return { role: "tutor", tutorId: tutor.id };
+    }
+  }
+
+  if (!preferredRole || preferredRole === "trainee") {
+    const learner = state.learners.find((item) => normalizeAccessCode(item.accessCode || generateAccessCode(item.name)) === code);
+    if (learner) {
+      return { role: "trainee", learnerId: learner.id };
+    }
+  }
+
+  return null;
+}
+
+function applyLoginAccess(access, helper) {
+  if (access.role === "admin") {
+    currentRole = "admin";
+    currentTraineeId = null;
+    currentTrainerId = null;
+    currentTutorId = null;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "admin" }));
+    completeProfileLogin("dashboard", helper);
     return;
   }
 
-  currentRole = "admin";
-  currentTraineeId = null;
-  currentTrainerId = null;
-  currentTutorId = null;
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "admin" }));
-  document.querySelector("#profileAccessCode").value = "";
-  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
-  setView("dashboard");
-  render();
-}
-
-function loginTrainerWithCode(code, helper) {
-  const trainer = (state.trainers || []).find((item) => normalizeAccessCode(item.accessCode) === code);
-
-  if (!trainer) {
-    helper.textContent = "Code formateur introuvable.";
+  if (access.role === "trainer") {
+    currentRole = "trainer";
+    currentTrainerId = access.trainerId;
+    currentTraineeId = null;
+    currentTutorId = null;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainer", trainerId: access.trainerId }));
+    completeProfileLogin("dashboard", helper);
     return;
   }
 
-  currentRole = "trainer";
-  currentTrainerId = trainer.id;
-  currentTraineeId = null;
-  currentTutorId = null;
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainer", trainerId: trainer.id }));
-  document.querySelector("#profileAccessCode").value = "";
-  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
-  setView("dashboard");
-  render();
-}
-
-function loginTutorWithCode(code, helper) {
-  const tutor = (state.tutors || []).find((item) => normalizeAccessCode(item.accessCode) === code);
-
-  if (!tutor) {
-    helper.textContent = "Code tuteur introuvable.";
-    return;
-  }
-
-  currentRole = "tutor";
-  currentTutorId = tutor.id;
-  currentTraineeId = null;
-  currentTrainerId = null;
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "tutor", tutorId: tutor.id }));
-  document.querySelector("#profileAccessCode").value = "";
-  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
-  setView("dashboard");
-  render();
-}
-
-function loginTraineeWithCode(code, helper) {
-  const learner = state.learners.find((item) => normalizeAccessCode(item.accessCode || generateAccessCode(item.name)) === code);
-
-  if (!learner) {
-    helper.textContent = "Code stagiaire introuvable.";
+  if (access.role === "tutor") {
+    currentRole = "tutor";
+    currentTutorId = access.tutorId;
+    currentTraineeId = null;
+    currentTrainerId = null;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "tutor", tutorId: access.tutorId }));
+    completeProfileLogin("dashboard", helper);
     return;
   }
 
   currentRole = "trainee";
-  currentTraineeId = learner.id;
+  currentTraineeId = access.learnerId;
   currentTrainerId = null;
   currentTutorId = null;
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: learner.id }));
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: access.learnerId }));
+  completeProfileLogin("trainee", helper);
+}
+
+function completeProfileLogin(viewName, helper) {
   document.querySelector("#profileAccessCode").value = "";
   helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
-  setView("trainee");
+  setView(viewName);
   render();
 }
 
