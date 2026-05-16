@@ -12,8 +12,6 @@ services:
         value: 0.0.0.0
       - key: DATA_DIR
         value: /opt/render/project/src/storage
-      - key: OPENAI_API_KEY
-        sync: false
       - key: OPENAI_MODEL
         value: gpt-5.4-mini
     disk:
