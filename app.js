@@ -113,6 +113,18 @@ const defaultLearners = [
   }
 ];
 
+const defaultTutors = [
+  {
+    id: crypto.randomUUID(),
+    learnerId: defaultLearners[0].id,
+    name: "Jean Dupont",
+    company: "Entreprise partenaire",
+    phone: "06 00 00 00 00",
+    email: "tuteur@entreprise.fr",
+    notes: "Point d'accueil réalisé. Prévoir un retour sur les premières missions."
+  }
+];
+
 let state = loadState();
 let selectedLearnerId = state.learners[0]?.id || null;
 let selectedMessageLearnerId = state.learners[0]?.id || null;
@@ -122,6 +134,7 @@ let currentRole = null;
 const views = {
   dashboard: document.querySelector("#dashboardView"),
   learners: document.querySelector("#learnersView"),
+  tutors: document.querySelector("#tutorsView"),
   followup: document.querySelector("#followupView"),
   messages: document.querySelector("#messagesView"),
   trainee: document.querySelector("#traineeView"),
@@ -140,6 +153,10 @@ const timeline = document.querySelector("#timeline");
 const noteLearner = document.querySelector("#noteLearner");
 const learnerDialog = document.querySelector("#learnerDialog");
 const learnerForm = document.querySelector("#learnerForm");
+const tutorForm = document.querySelector("#tutorForm");
+const tutorLearner = document.querySelector("#tutorLearner");
+const tutorList = document.querySelector("#tutorList");
+const tutorCount = document.querySelector("#tutorCount");
 const noteForm = document.querySelector("#noteForm");
 const messageLearnerList = document.querySelector("#messageLearnerList");
 const chatHeading = document.querySelector("#chatHeading");
@@ -170,6 +187,7 @@ logoutButton.addEventListener("click", logoutSession);
 searchInput.addEventListener("input", renderLearners);
 statusFilter.addEventListener("change", renderLearners);
 learnerForm.addEventListener("submit", addLearner);
+tutorForm.addEventListener("submit", addTutor);
 noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
@@ -192,21 +210,22 @@ async function initializeApp() {
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    return { learners: defaultLearners, center: defaultCenter };
+    return { learners: defaultLearners, tutors: defaultTutors, center: defaultCenter };
   }
 
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.learners)) {
-      return { learners: defaultLearners, center: defaultCenter };
+      return { learners: defaultLearners, tutors: defaultTutors, center: defaultCenter };
     }
 
     return {
       learners: parsed.learners.map(normalizeLearner),
+      tutors: normalizeTutors(parsed.tutors || []),
       center: { ...defaultCenter, ...(parsed.center || {}) }
     };
   } catch {
-    return { learners: defaultLearners, center: defaultCenter };
+    return { learners: defaultLearners, tutors: defaultTutors, center: defaultCenter };
   }
 }
 
@@ -250,6 +269,18 @@ function normalizeLearner(learner) {
   };
 }
 
+function normalizeTutors(tutors) {
+  return tutors.map((tutor) => ({
+    id: tutor.id || crypto.randomUUID(),
+    learnerId: tutor.learnerId || "",
+    name: tutor.name || "",
+    company: tutor.company || "",
+    phone: tutor.phone || "",
+    email: tutor.email || "",
+    notes: tutor.notes || ""
+  }));
+}
+
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   saveServerState();
@@ -274,6 +305,7 @@ async function loadServerState() {
 
     state = {
       learners: serverState.learners.map(normalizeLearner),
+      tutors: normalizeTutors(serverState.tutors || []),
       center: { ...defaultCenter, ...(serverState.center || {}) }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -319,6 +351,7 @@ function render() {
   renderOrganization();
   renderDashboard();
   renderLearners();
+  renderTutors();
   renderFollowup();
   renderMessages();
   renderTraineeSpace();
@@ -475,6 +508,7 @@ function renderLearners() {
 function renderDetail() {
   const learner = state.learners.find((item) => item.id === selectedLearnerId);
   const template = getProgramTemplate(learner?.program || "", learner?.modality || "Présentiel");
+  const tutor = state.tutors?.find((item) => item.learnerId === learner?.id);
   if (!learner) {
     detailPanel.innerHTML = `<div class="empty-state">Sélectionnez une fiche pour voir le détail.</div>`;
     return;
@@ -495,6 +529,11 @@ function renderDetail() {
       <div><span>Présence</span><strong>${learner.attendance}%</strong></div>
       <div><span>Progression</span><strong>${progressOf(learner)}%</strong></div>
       <div><span>Code espace stagiaire</span><strong>${escapeHtml(learner.accessCode || generateAccessCode(learner.name))}</strong></div>
+    </div>
+    <div class="linked-tutor">
+      <span>Tuteur entreprise</span>
+      <strong>${escapeHtml(tutor?.name || "Non renseigné")}</strong>
+      <p>${escapeHtml(tutor ? `${tutor.company || "Structure non renseignée"} · ${tutor.phone || "Téléphone non renseigné"}` : "Ajoutez un tuteur depuis l'onglet Tuteurs.")}</p>
     </div>
     <label class="modality-editor">
       <span>Changer la modalité</span>
@@ -545,6 +584,43 @@ function renderDetail() {
   });
 
   document.querySelector("#deleteLearnerButton").addEventListener("click", () => deleteLearner(learner.id));
+}
+
+function renderTutors() {
+  const tutors = state.tutors || [];
+  tutorLearner.innerHTML = state.learners.length
+    ? state.learners.map((learner) => `<option value="${learner.id}">${escapeHtml(learner.name)}</option>`).join("")
+    : `<option value="">Ajoutez d'abord un stagiaire</option>`;
+  tutorLearner.disabled = !state.learners.length;
+  tutorForm.querySelector("button[type='submit']").disabled = !state.learners.length;
+  tutorCount.textContent = tutors.length;
+
+  tutorList.innerHTML = tutors.length
+    ? tutors.map((tutor) => {
+      const learner = state.learners.find((item) => item.id === tutor.learnerId);
+      return `
+        <article class="tutor-card">
+          <div class="tutor-card-top">
+            <div>
+              <strong>${escapeHtml(tutor.name || "Tuteur sans nom")}</strong>
+              <span>${escapeHtml(tutor.company || "Structure non renseignée")}</span>
+            </div>
+            <button class="danger-link" type="button" data-delete-tutor="${tutor.id}">Supprimer</button>
+          </div>
+          <div class="tutor-info-grid">
+            <div><span>Stagiaire</span><strong>${escapeHtml(learner?.name || "Non rattaché")}</strong></div>
+            <div><span>Téléphone</span><strong>${escapeHtml(tutor.phone || "Non renseigné")}</strong></div>
+            <div><span>E-mail</span><strong>${escapeHtml(tutor.email || "Non renseigné")}</strong></div>
+          </div>
+          <p>${escapeHtml(tutor.notes || "Aucune note de suivi.")}</p>
+        </article>
+      `;
+    }).join("")
+    : `<div class="empty-state">Aucun tuteur enregistré pour le moment.</div>`;
+
+  tutorList.querySelectorAll("[data-delete-tutor]").forEach((button) => {
+    button.addEventListener("click", () => deleteTutor(button.dataset.deleteTutor));
+  });
 }
 
 function renderFollowup() {
@@ -744,6 +820,32 @@ function addLearner(event) {
   learnerForm.reset();
   learnerDialog.close();
   setView("learners");
+  render();
+}
+
+function addTutor(event) {
+  event.preventDefault();
+  const learnerId = tutorLearner.value;
+  if (!learnerId) {
+    return;
+  }
+
+  const tutor = {
+    id: crypto.randomUUID(),
+    learnerId,
+    name: document.querySelector("#tutorName").value.trim(),
+    company: document.querySelector("#tutorCompany").value.trim(),
+    phone: document.querySelector("#tutorPhone").value.trim(),
+    email: document.querySelector("#tutorEmail").value.trim(),
+    notes: document.querySelector("#tutorNotes").value.trim()
+  };
+
+  state.tutors = state.tutors || [];
+  state.tutors.unshift(tutor);
+  selectedLearnerId = learnerId;
+  saveState();
+  tutorForm.reset();
+  setView("tutors");
   render();
 }
 
@@ -1091,12 +1193,15 @@ function updateCenterLogo(event) {
 }
 
 function exportCsv() {
-  const headers = ["Nom", "Formation", "Modalité", "Référent", "Date entrée", "Statut", "Présence", "Progression"];
+  const headers = ["Nom", "Formation", "Modalité", "Référent", "Tuteur", "Entreprise tuteur", "Téléphone tuteur", "Date entrée", "Statut", "Présence", "Progression"];
   const rows = state.learners.map((learner) => [
     learner.name,
     learner.program,
     learner.modality || "Présentiel",
     learner.coach,
+    state.tutors?.find((tutor) => tutor.learnerId === learner.id)?.name || "",
+    state.tutors?.find((tutor) => tutor.learnerId === learner.id)?.company || "",
+    state.tutors?.find((tutor) => tutor.learnerId === learner.id)?.phone || "",
     learner.startDate,
     learner.status,
     `${learner.attendance}%`,
@@ -1121,7 +1226,7 @@ function resetData() {
   }
 
   localStorage.removeItem(STORAGE_KEY);
-  state = { learners: structuredClone(defaultLearners), center: state.center || defaultCenter };
+  state = { learners: structuredClone(defaultLearners), tutors: structuredClone(defaultTutors), center: state.center || defaultCenter };
   selectedLearnerId = state.learners[0]?.id || null;
   saveState();
   render();
@@ -1134,7 +1239,19 @@ function deleteLearner(learnerId) {
   }
 
   state.learners = state.learners.filter((item) => item.id !== learnerId);
+  state.tutors = (state.tutors || []).filter((item) => item.learnerId !== learnerId);
   selectedLearnerId = state.learners[0]?.id || null;
+  saveState();
+  render();
+}
+
+function deleteTutor(tutorId) {
+  const tutor = (state.tutors || []).find((item) => item.id === tutorId);
+  if (!tutor || !confirm(`Supprimer le tuteur ${tutor.name || "sélectionné"} ?`)) {
+    return;
+  }
+
+  state.tutors = (state.tutors || []).filter((item) => item.id !== tutorId);
   saveState();
   render();
 }

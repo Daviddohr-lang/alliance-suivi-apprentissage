@@ -65,6 +65,10 @@
             <span aria-hidden="true">◉</span>
             Apprenants
           </button>
+          <button class="nav-item" data-view="tutors" type="button">
+            <span aria-hidden="true">☏</span>
+            Tuteurs
+          </button>
           <button class="nav-item" data-view="followup" type="button">
             <span aria-hidden="true">✓</span>
             Suivi
@@ -159,6 +163,56 @@
           <div class="content-grid">
             <div class="learner-list" id="learnerList"></div>
             <aside class="detail-panel" id="detailPanel"></aside>
+          </div>
+        </section>
+
+        <section class="view" id="tutorsView" aria-labelledby="tutorsTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="tutorsTitle">Tuteurs</h2>
+              <p>Centralisez les contacts entreprise et les points de suivi des stagiaires.</p>
+            </div>
+          </div>
+
+          <div class="tutors-layout">
+            <form class="panel tutor-form" id="tutorForm">
+              <h3>Ajouter un tuteur</h3>
+              <label>
+                <span>Stagiaire concerné</span>
+                <select id="tutorLearner" required></select>
+              </label>
+              <label>
+                <span>Nom du tuteur</span>
+                <input id="tutorName" required placeholder="Ex. Christophe Martin">
+              </label>
+              <label>
+                <span>Entreprise / structure</span>
+                <input id="tutorCompany" placeholder="Ex. PC Sécurité">
+              </label>
+              <div class="form-grid compact">
+                <label>
+                  <span>Téléphone</span>
+                  <input id="tutorPhone" placeholder="Ex. 06 12 34 56 78">
+                </label>
+                <label>
+                  <span>E-mail</span>
+                  <input id="tutorEmail" type="email" placeholder="tuteur@entreprise.fr">
+                </label>
+              </div>
+              <label>
+                <span>Dernier échange / consigne</span>
+                <textarea id="tutorNotes" rows="4" placeholder="Résumé du contact, disponibilité, consigne de suivi..."></textarea>
+              </label>
+              <button class="primary-button" type="submit">Enregistrer le tuteur</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Contacts tuteurs</h3>
+                <span id="tutorCount">0</span>
+              </div>
+              <div class="tutor-list" id="tutorList"></div>
+            </section>
           </div>
         </section>
 

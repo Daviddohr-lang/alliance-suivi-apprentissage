@@ -323,7 +323,8 @@ label span,
 .dashboard-grid,
 .followup-layout,
 .content-grid,
-.messages-layout {
+.messages-layout,
+.tutors-layout {
   display: grid;
   gap: 18px;
 }
@@ -529,6 +530,87 @@ textarea {
 .messages-layout {
   grid-template-columns: minmax(260px, 0.7fr) minmax(420px, 1.3fr);
   align-items: start;
+}
+
+.tutors-layout {
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  align-items: start;
+}
+
+.tutor-form {
+  display: grid;
+  gap: 14px;
+}
+
+.tutor-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tutor-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.tutor-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tutor-card-top strong,
+.tutor-card-top span {
+  display: block;
+}
+
+.tutor-card-top span,
+.tutor-info-grid span,
+.linked-tutor span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.tutor-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tutor-info-grid div,
+.linked-tutor {
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tutor-info-grid strong,
+.linked-tutor strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.linked-tutor {
+  margin: 0 0 16px;
+  border: 1px solid var(--line);
+}
+
+.linked-tutor p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.danger-link {
+  border: 0;
+  background: transparent;
+  color: var(--red);
+  font-weight: 800;
 }
 
 .trainee-layout {
@@ -817,11 +899,12 @@ dialog::backdrop {
 
   .metric-grid,
   .dashboard-grid,
-  .content-grid,
-  .followup-layout,
-  .messages-layout,
-  .trainee-grid,
-  .center-layout {
+    .content-grid,
+    .followup-layout,
+    .messages-layout,
+    .tutors-layout,
+    .trainee-grid,
+    .center-layout {
     grid-template-columns: 1fr;
   }
 
@@ -886,6 +969,7 @@ dialog::backdrop {
   .form-grid,
   .chat-form,
   .detail-meta,
+  .tutor-info-grid,
   .center-info-grid,
   .referent-grid {
     grid-template-columns: 1fr;
