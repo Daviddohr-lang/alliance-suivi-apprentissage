@@ -1052,7 +1052,7 @@ function addTrainer(event) {
     id: crypto.randomUUID(),
     firstName,
     lastName,
-    specialties: normalizeSpecialties(document.querySelector("#trainerSpecialties").value),
+    specialties: [...document.querySelectorAll('input[name="trainerSpecialties"]:checked')].map((input) => input.value),
     phone: document.querySelector("#trainerPhone").value.trim(),
     email: document.querySelector("#trainerEmail").value.trim(),
     learnerIds,
