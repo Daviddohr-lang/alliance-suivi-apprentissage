@@ -33,6 +33,26 @@
             <p class="helper-text" id="adminLoginHelp">Code de test : ALLIANCE2026</p>
           </form>
 
+          <form class="auth-panel" id="trainerLoginForm">
+            <h2>Formateur</h2>
+            <label>
+              <span>Code formateur</span>
+              <input id="trainerAccessCodeLogin" placeholder="Ex. FORM-2026" required>
+            </label>
+            <button class="primary-button" type="submit">Entrer côté formateur</button>
+            <p class="helper-text" id="trainerLoginHelp">Le code est visible dans la fiche formateur.</p>
+          </form>
+
+          <form class="auth-panel" id="tutorLoginForm">
+            <h2>Tuteur</h2>
+            <label>
+              <span>Code tuteur</span>
+              <input id="tutorAccessCodeLogin" placeholder="Ex. TUT-1234" required>
+            </label>
+            <button class="primary-button" type="submit">Entrer côté tuteur</button>
+            <p class="helper-text" id="tutorLoginHelp">Le code est remis par Alliance.</p>
+          </form>
+
           <form class="auth-panel" id="publicTraineeLoginForm">
             <h2>Stagiaire</h2>
             <label>

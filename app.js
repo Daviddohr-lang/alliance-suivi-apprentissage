@@ -119,6 +119,7 @@ const defaultTutors = [
     diploma: defaultLearners[0].program,
     phone: "06 00 00 00 00",
     email: "tuteur@entreprise.fr",
+    accessCode: "TUT-2026",
     notes: "Point d'accueil réalisé. Prévoir un retour sur les premières missions.",
     messages: [
       {
@@ -259,6 +260,8 @@ let state = loadState();
 let selectedLearnerId = state.learners[0]?.id || null;
 let selectedMessageLearnerId = state.learners[0]?.id || null;
 let currentTraineeId = null;
+let currentTrainerId = null;
+let currentTutorId = null;
 let currentRole = null;
 
 const views = {
@@ -309,6 +312,8 @@ const centerLogoInput = document.querySelector("#centerLogoInput");
 const authScreen = document.querySelector("#authScreen");
 const appShell = document.querySelector("#appShell");
 const adminLoginForm = document.querySelector("#adminLoginForm");
+const trainerLoginForm = document.querySelector("#trainerLoginForm");
+const tutorLoginForm = document.querySelector("#tutorLoginForm");
 const publicTraineeLoginForm = document.querySelector("#publicTraineeLoginForm");
 const logoutButton = document.querySelector("#logoutButton");
 
@@ -332,6 +337,8 @@ messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
 traineeLogoutButton.addEventListener("click", logoutTrainee);
 adminLoginForm.addEventListener("submit", loginAdminSession);
+trainerLoginForm.addEventListener("submit", loginTrainerSession);
+tutorLoginForm.addEventListener("submit", loginTutorSession);
 publicTraineeLoginForm.addEventListener("submit", loginPublicTraineeSession);
 centerForm.addEventListener("submit", saveCenter);
 centerLogoInput.addEventListener("change", updateCenterLogo);
@@ -381,6 +388,18 @@ function restoreSession() {
       return;
     }
 
+    if (session.role === "trainer" && state.trainers.some((trainer) => trainer.id === session.trainerId)) {
+      currentRole = "trainer";
+      currentTrainerId = session.trainerId;
+      return;
+    }
+
+    if (session.role === "tutor" && state.tutors.some((tutor) => tutor.id === session.tutorId)) {
+      currentRole = "tutor";
+      currentTutorId = session.tutorId;
+      return;
+    }
+
     if (session.role === "trainee" && state.learners.some((learner) => learner.id === session.learnerId)) {
       currentRole = "trainee";
       currentTraineeId = session.learnerId;
@@ -420,6 +439,7 @@ function normalizeTutors(tutors) {
     diploma: tutor.diploma || "",
     phone: tutor.phone || "",
     email: tutor.email || "",
+    accessCode: tutor.accessCode || generateProfileCode("TUT", `${tutor.firstName || ""} ${tutor.lastName || tutor.name || ""}`),
     notes: tutor.notes || "",
     messages: tutor.messages || []
   }));
@@ -494,8 +514,8 @@ function isServerMode() {
 }
 
 function setView(viewName) {
-  if (currentTraineeId && viewName !== "trainee") {
-    viewName = "trainee";
+  if (!getAllowedViews().includes(viewName)) {
+    viewName = getDefaultViewForRole();
   }
 
   Object.entries(views).forEach(([name, view]) => view.classList.toggle("active", name === viewName));
@@ -539,13 +559,62 @@ function renderAuthState() {
 function updateNavigationAccess() {
   const traineeMode = currentRole === "trainee" && Boolean(currentTraineeId);
   document.body.classList.toggle("trainee-mode", traineeMode);
+  const allowedViews = getAllowedViews();
   document.querySelectorAll(".nav-item").forEach((button) => {
-    const isTraineeView = button.dataset.view === "trainee";
-    button.hidden = traineeMode && !isTraineeView;
+    button.hidden = !allowedViews.includes(button.dataset.view);
   });
 
-  document.querySelector("#exportButton").hidden = traineeMode;
-  document.querySelector("#resetDataButton").hidden = traineeMode;
+  document.querySelector("#exportButton").hidden = currentRole !== "admin";
+  document.querySelector("#resetDataButton").hidden = currentRole !== "admin";
+  trainerForm.hidden = currentRole !== "admin";
+  tutorForm.hidden = currentRole !== "admin";
+}
+
+function getAllowedViews() {
+  if (currentRole === "admin") {
+    return ["dashboard", "profiles", "learners", "trainers", "tutors", "followup", "messages", "trainee", "center"];
+  }
+
+  if (currentRole === "trainer") {
+    return ["dashboard", "trainers", "learners", "followup", "messages"];
+  }
+
+  if (currentRole === "tutor") {
+    return ["dashboard", "tutors"];
+  }
+
+  if (currentRole === "trainee") {
+    return ["trainee"];
+  }
+
+  return [];
+}
+
+function getDefaultViewForRole() {
+  if (currentRole === "trainee") {
+    return "trainee";
+  }
+
+  return "dashboard";
+}
+
+function getVisibleLearners() {
+  if (currentRole === "trainer" && currentTrainerId) {
+    const trainer = state.trainers.find((item) => item.id === currentTrainerId);
+    const learnerIds = trainer?.learnerIds || [];
+    return state.learners.filter((learner) => learnerIds.includes(learner.id));
+  }
+
+  if (currentRole === "tutor" && currentTutorId) {
+    const tutor = state.tutors.find((item) => item.id === currentTutorId);
+    return state.learners.filter((learner) => learner.id === tutor?.learnerId);
+  }
+
+  if (currentRole === "trainee" && currentTraineeId) {
+    return state.learners.filter((learner) => learner.id === currentTraineeId);
+  }
+
+  return state.learners;
 }
 
 function renderOrganization() {
@@ -574,7 +643,7 @@ function statusClass(status) {
 }
 
 function renderDashboard() {
-  const learners = state.learners;
+  const learners = getVisibleLearners();
   const active = learners.filter((learner) => learner.status === "Actif").length;
   const atRisk = learners.filter((learner) => learner.status === "À risque" || learner.attendance < 70).length;
   const averageProgress = learners.length
@@ -702,7 +771,9 @@ function getAllianceHomeMetrics() {
 }
 
 function renderTrainers() {
-  const trainers = state.trainers || [];
+  const trainers = currentRole === "trainer" && currentTrainerId
+    ? (state.trainers || []).filter((trainer) => trainer.id === currentTrainerId)
+    : state.trainers || [];
   trainerLearners.innerHTML = state.learners.length
     ? state.learners.map((learner) => `<option value="${learner.id}">${escapeHtml(learner.name)} - ${escapeHtml(learner.program)}</option>`).join("")
     : `<option value="">Ajoutez d'abord un stagiaire</option>`;
@@ -722,7 +793,7 @@ function renderTrainers() {
               <strong>${escapeHtml(personFullName(trainer) || "Formateur sans nom")}</strong>
               <span>${trainer.specialties?.length ? `${trainer.specialties.length} spécialité(s)` : "Spécialité non renseignée"}</span>
             </div>
-            <button class="danger-link" type="button" data-delete-trainer="${trainer.id}">Supprimer</button>
+            ${currentRole === "admin" ? `<button class="danger-link" type="button" data-delete-trainer="${trainer.id}">Supprimer</button>` : ""}
           </div>
           <div class="trainer-specialties">
             ${trainer.specialties?.length
@@ -754,13 +825,14 @@ function renderTrainers() {
 function renderLearners() {
   const query = searchInput.value.trim().toLowerCase();
   const status = statusFilter.value;
-  const learners = state.learners.filter((learner) => {
+  const availableLearners = getVisibleLearners();
+  const learners = availableLearners.filter((learner) => {
     const searchable = `${learner.name} ${learner.program} ${learner.coach}`.toLowerCase();
     return searchable.includes(query) && (status === "all" || learner.status === status);
   });
 
   if (!learners.some((learner) => learner.id === selectedLearnerId)) {
-    selectedLearnerId = learners[0]?.id || state.learners[0]?.id || null;
+    selectedLearnerId = learners[0]?.id || null;
   }
 
   learnerList.innerHTML = learners.length
@@ -847,7 +919,7 @@ function renderDetail() {
     <div class="timeline">
       ${learner.notes.slice(-3).reverse().map(noteTemplate).join("") || `<div class="empty-state">Aucune note enregistrée.</div>`}
     </div>
-    <button class="danger-button" id="deleteLearnerButton" type="button">Supprimer ce stagiaire</button>
+    ${currentRole === "admin" ? `<button class="danger-button" id="deleteLearnerButton" type="button">Supprimer ce stagiaire</button>` : ""}
   `;
 
   detailPanel.querySelectorAll("[data-module]").forEach((checkbox) => {
@@ -867,11 +939,16 @@ function renderDetail() {
     updateLearnerModality(learner.id, event.target.value);
   });
 
-  document.querySelector("#deleteLearnerButton").addEventListener("click", () => deleteLearner(learner.id));
+  const deleteLearnerButton = document.querySelector("#deleteLearnerButton");
+  if (deleteLearnerButton) {
+    deleteLearnerButton.addEventListener("click", () => deleteLearner(learner.id));
+  }
 }
 
 function renderTutors() {
-  const tutors = state.tutors || [];
+  const tutors = currentRole === "tutor" && currentTutorId
+    ? (state.tutors || []).filter((tutor) => tutor.id === currentTutorId)
+    : state.tutors || [];
   tutorLearner.innerHTML = state.learners.length
     ? state.learners.map((learner) => `<option value="${learner.id}">${escapeHtml(learner.name)}</option>`).join("")
     : `<option value="">Ajoutez d'abord un stagiaire</option>`;
@@ -890,11 +967,12 @@ function renderTutors() {
               <strong>${escapeHtml(tutorFullName(tutor) || "Tuteur sans nom")}</strong>
               <span>${escapeHtml(tutor.position || "Poste non renseigné")} · ${escapeHtml(tutor.company || "Entreprise non renseignée")}</span>
             </div>
-            <button class="danger-link" type="button" data-delete-tutor="${tutor.id}">Supprimer</button>
+            ${currentRole === "admin" ? `<button class="danger-link" type="button" data-delete-tutor="${tutor.id}">Supprimer</button>` : ""}
           </div>
           <div class="tutor-info-grid">
             <div><span>Stagiaire</span><strong>${escapeHtml(learner?.name || "Non rattaché")}</strong></div>
             <div><span>Diplôme suivi</span><strong>${escapeHtml(tutor.diploma || learner?.program || "Non renseigné")}</strong></div>
+            <div><span>Code accès tuteur</span><strong>${escapeHtml(tutor.accessCode || "Non renseigné")}</strong></div>
             <div><span>Téléphone</span><strong>${escapeHtml(tutor.phone || "Non renseigné")}</strong></div>
             <div><span>E-mail</span><strong>${escapeHtml(tutor.email || "Non renseigné")}</strong></div>
           </div>
@@ -913,8 +991,9 @@ function renderTutors() {
             <label>
               <span>Expéditeur</span>
               <select name="sender">
-                <option value="Centre">Centre</option>
-                <option value="Tuteur">Tuteur</option>
+                ${currentRole === "tutor"
+                  ? `<option value="Tuteur">Tuteur</option>`
+                  : `<option value="Centre">Centre</option><option value="Tuteur">Tuteur</option>`}
               </select>
             </label>
             <label>
@@ -938,11 +1017,12 @@ function renderTutors() {
 }
 
 function renderFollowup() {
-  noteLearner.innerHTML = state.learners.map((learner) => `
+  const learners = getVisibleLearners();
+  noteLearner.innerHTML = learners.map((learner) => `
     <option value="${learner.id}">${learner.name}</option>
   `).join("");
 
-  const notes = state.learners.flatMap((learner) => learner.notes.map((note) => ({ ...note, learnerName: learner.name })));
+  const notes = learners.flatMap((learner) => learner.notes.map((note) => ({ ...note, learnerName: learner.name })));
   notes.sort((a, b) => b.date.localeCompare(a.date));
 
   timeline.innerHTML = notes.length
@@ -951,12 +1031,13 @@ function renderFollowup() {
 }
 
 function renderMessages() {
-  if (!state.learners.some((learner) => learner.id === selectedMessageLearnerId)) {
-    selectedMessageLearnerId = state.learners[0]?.id || null;
+  const learners = getVisibleLearners();
+  if (!learners.some((learner) => learner.id === selectedMessageLearnerId)) {
+    selectedMessageLearnerId = learners[0]?.id || null;
   }
 
-  messageLearnerList.innerHTML = state.learners.length
-    ? state.learners.map((learner) => `
+  messageLearnerList.innerHTML = learners.length
+    ? learners.map((learner) => `
       <button class="message-learner ${learner.id === selectedMessageLearnerId ? "active" : ""}" type="button" data-id="${learner.id}">
         <strong>${escapeHtml(learner.name)}</strong>
         <span>${escapeHtml(learner.program)} · ${(learner.messages || []).length} message(s)</span>
@@ -971,7 +1052,7 @@ function renderMessages() {
     });
   });
 
-  const learner = state.learners.find((item) => item.id === selectedMessageLearnerId);
+  const learner = learners.find((item) => item.id === selectedMessageLearnerId);
   if (!learner) {
     chatHeading.innerHTML = `<h3>Aucune conversation</h3>`;
     chatThread.innerHTML = `<div class="empty-state">Ajoutez un stagiaire pour démarrer une conversation.</div>`;
@@ -1181,6 +1262,7 @@ function addTutor(event) {
     diploma: document.querySelector("#tutorDiploma").value.trim() || learner?.program || "",
     phone: document.querySelector("#tutorPhone").value.trim(),
     email: document.querySelector("#tutorEmail").value.trim(),
+    accessCode: generateProfileCode("TUT", `${document.querySelector("#tutorFirstName").value} ${document.querySelector("#tutorLastName").value}`),
     notes: document.querySelector("#tutorNotes").value.trim(),
     messages: []
   };
@@ -1275,9 +1357,55 @@ function loginAdminSession(event) {
 
   currentRole = "admin";
   currentTraineeId = null;
+  currentTrainerId = null;
+  currentTutorId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "admin" }));
   document.querySelector("#adminAccessCode").value = "";
   helper.textContent = "Code de test : ALLIANCE2026";
+  setView("dashboard");
+  render();
+}
+
+function loginTrainerSession(event) {
+  event.preventDefault();
+  const code = normalizeAccessCode(document.querySelector("#trainerAccessCodeLogin").value);
+  const helper = document.querySelector("#trainerLoginHelp");
+  const trainer = (state.trainers || []).find((item) => normalizeAccessCode(item.accessCode) === code);
+
+  if (!trainer) {
+    helper.textContent = "Code formateur introuvable.";
+    return;
+  }
+
+  currentRole = "trainer";
+  currentTrainerId = trainer.id;
+  currentTraineeId = null;
+  currentTutorId = null;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainer", trainerId: trainer.id }));
+  document.querySelector("#trainerAccessCodeLogin").value = "";
+  helper.textContent = "Le code est visible dans la fiche formateur.";
+  setView("dashboard");
+  render();
+}
+
+function loginTutorSession(event) {
+  event.preventDefault();
+  const code = normalizeAccessCode(document.querySelector("#tutorAccessCodeLogin").value);
+  const helper = document.querySelector("#tutorLoginHelp");
+  const tutor = (state.tutors || []).find((item) => normalizeAccessCode(item.accessCode) === code);
+
+  if (!tutor) {
+    helper.textContent = "Code tuteur introuvable.";
+    return;
+  }
+
+  currentRole = "tutor";
+  currentTutorId = tutor.id;
+  currentTraineeId = null;
+  currentTrainerId = null;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "tutor", tutorId: tutor.id }));
+  document.querySelector("#tutorAccessCodeLogin").value = "";
+  helper.textContent = "Le code est remis par Alliance.";
   setView("dashboard");
   render();
 }
@@ -1295,6 +1423,8 @@ function loginPublicTraineeSession(event) {
 
   currentRole = "trainee";
   currentTraineeId = learner.id;
+  currentTrainerId = null;
+  currentTutorId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: learner.id }));
   document.querySelector("#publicTraineeAccessCode").value = "";
   helper.textContent = "Le code est remis par le centre.";
@@ -1305,6 +1435,8 @@ function loginPublicTraineeSession(event) {
 function logoutSession() {
   currentRole = null;
   currentTraineeId = null;
+  currentTrainerId = null;
+  currentTutorId = null;
   sessionStorage.removeItem(SESSION_KEY);
   document.body.classList.remove("trainee-mode");
   render();
@@ -1323,6 +1455,8 @@ function loginTrainee(event) {
 
   currentTraineeId = learner.id;
   currentRole = "trainee";
+  currentTrainerId = null;
+  currentTutorId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: learner.id }));
   document.querySelector("#traineeAccessCode").value = "";
   helper.textContent = "Le code d'accès est visible dans la fiche du stagiaire côté centre.";
