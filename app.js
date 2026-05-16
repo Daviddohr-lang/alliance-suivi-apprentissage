@@ -212,6 +212,57 @@ const profileAccess = [
   }
 ];
 
+const profileHomePages = [
+  {
+    title: "Alliance",
+    subtitle: "Tableau de bord global",
+    type: "metrics",
+    items: [
+      ["Apprentis actifs", "18"],
+      ["Dossiers incomplets", "3"],
+      ["Alertes assiduité", "2"],
+      ["Alertes entreprise", "1"],
+      ["Examens à venir", "4"],
+      ["Visites tuteur à planifier", "5"]
+    ]
+  },
+  {
+    title: "Formateur",
+    subtitle: "Accueil pédagogique",
+    type: "list",
+    items: [
+      "ses groupes",
+      "les séances du jour",
+      "les feuilles d'émargement",
+      "les évaluations à compléter",
+      "les apprentis en difficulté"
+    ]
+  },
+  {
+    title: "Tuteur entreprise",
+    subtitle: "Accueil entreprise",
+    type: "list",
+    items: [
+      "ses apprentis",
+      "les bilans à compléter",
+      "les prochaines visites",
+      "les alertes à traiter"
+    ]
+  },
+  {
+    title: "Apprenti / stagiaire",
+    subtitle: "Accueil personnel",
+    type: "list",
+    items: [
+      "son planning",
+      "son taux de présence",
+      "ses compétences validées",
+      "ses documents manquants",
+      "ses prochaines échéances"
+    ]
+  }
+];
+
 let state = loadState();
 let selectedLearnerId = state.learners[0]?.id || null;
 let selectedMessageLearnerId = state.learners[0]?.id || null;
@@ -235,6 +286,7 @@ const riskList = document.querySelector("#riskList");
 const riskCount = document.querySelector("#riskCount");
 const programList = document.querySelector("#programList");
 const profileGrid = document.querySelector("#profileGrid");
+const profileHomeGrid = document.querySelector("#profileHomeGrid");
 const learnerList = document.querySelector("#learnerList");
 const detailPanel = document.querySelector("#detailPanel");
 const searchInput = document.querySelector("#searchInput");
@@ -597,6 +649,31 @@ function renderProfiles() {
       <div class="profile-rights">
         ${profile.canSee.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
       </div>
+    </article>
+  `).join("");
+
+  profileHomeGrid.innerHTML = profileHomePages.map((home) => `
+    <article class="profile-home-card">
+      <div class="profile-card-heading">
+        <div>
+          <h3>${escapeHtml(home.title)}</h3>
+          <p>${escapeHtml(home.subtitle)}</p>
+        </div>
+      </div>
+      ${home.type === "metrics" ? `
+        <div class="profile-home-metrics">
+          ${home.items.map(([label, value]) => `
+            <div>
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(value)}</strong>
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="profile-home-list">
+          ${home.items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+      `}
     </article>
   `).join("");
 }
