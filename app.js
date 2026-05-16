@@ -141,7 +141,7 @@ const defaultTrainers = [
     id: crypto.randomUUID(),
     firstName: "Claire",
     lastName: "Durand",
-    specialty: "OVP - Vidéoprotection",
+    specialties: ["OVP - Vidéoprotection", "Préparation examen"],
     phone: "06 00 00 00 01",
     email: "formateur@alliance.fr",
     learnerIds: [defaultLearners[0].id],
@@ -391,7 +391,7 @@ function normalizeTrainers(trainers) {
     id: trainer.id || crypto.randomUUID(),
     firstName: trainer.firstName || splitTutorName(trainer.name).firstName,
     lastName: trainer.lastName || splitTutorName(trainer.name).lastName,
-    specialty: trainer.specialty || "",
+    specialties: normalizeSpecialties(trainer.specialties || trainer.specialty || ""),
     phone: trainer.phone || "",
     email: trainer.email || "",
     learnerIds: Array.isArray(trainer.learnerIds) ? trainer.learnerIds : [],
@@ -625,9 +625,14 @@ function renderTrainers() {
           <div class="trainer-card-top">
             <div>
               <strong>${escapeHtml(personFullName(trainer) || "Formateur sans nom")}</strong>
-              <span>${escapeHtml(trainer.specialty || "Spécialité non renseignée")}</span>
+              <span>${trainer.specialties?.length ? `${trainer.specialties.length} spécialité(s)` : "Spécialité non renseignée"}</span>
             </div>
             <button class="danger-link" type="button" data-delete-trainer="${trainer.id}">Supprimer</button>
+          </div>
+          <div class="trainer-specialties">
+            ${trainer.specialties?.length
+              ? trainer.specialties.map((specialty) => `<span>${escapeHtml(specialty)}</span>`).join("")
+              : `<span>Spécialité non renseignée</span>`}
           </div>
           <div class="trainer-info-grid">
             <div><span>Code accès formateur</span><strong>${escapeHtml(trainer.accessCode)}</strong></div>
@@ -1047,7 +1052,7 @@ function addTrainer(event) {
     id: crypto.randomUUID(),
     firstName,
     lastName,
-    specialty: document.querySelector("#trainerSpecialty").value.trim(),
+    specialties: normalizeSpecialties(document.querySelector("#trainerSpecialties").value),
     phone: document.querySelector("#trainerPhone").value.trim(),
     email: document.querySelector("#trainerEmail").value.trim(),
     learnerIds,
@@ -1648,6 +1653,13 @@ function generateProfileCode(prefix, name) {
   }
 
   return `${prefix}-${String(hash).padStart(4, "0")}`;
+}
+
+function normalizeSpecialties(value) {
+  const items = Array.isArray(value) ? value : String(value || "").split(",");
+  return items
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function splitTutorName(name = "") {

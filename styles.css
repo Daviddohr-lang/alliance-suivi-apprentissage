@@ -658,11 +658,26 @@ textarea {
   gap: 8px;
 }
 
+.trainer-specialties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .trainer-learners span {
   padding: 7px 10px;
   border-radius: 999px;
   background: #e9f0ed;
   color: #24423a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.trainer-specialties span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e6eef6;
+  color: var(--blue);
   font-size: 0.82rem;
   font-weight: 800;
 }
