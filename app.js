@@ -14,7 +14,7 @@ const defaultCenter = {
 
 const programTemplates = {
   ovp: {
-    label: "OVP - Opérateur en vidéoprotection",
+    label: "OVP : Opérateur en Video Protection",
     modality: "Présentiel",
     modules: [
       { name: "Objectif pédagogique : connaître la réglementation relative au code de la sécurité privée", done: false },
@@ -41,7 +41,7 @@ const programTemplates = {
     ]
   },
   ovpDistance: {
-    label: "OVP - Opérateur en vidéoprotection",
+    label: "OVP : Opérateur en Video Protection",
     modality: "Distanciel",
     modules: [
       { name: "Distanciel : Vidéoprotection : les règles républicaines", done: false },
@@ -57,18 +57,13 @@ const defaultLearners = [
   {
     id: crypto.randomUUID(),
     name: "Samira Benali",
-    program: "Français professionnel",
+    program: "OVP : Opérateur en Video Protection",
     coach: "Nadia M.",
     modality: "Présentiel",
     startDate: "2026-02-03",
     status: "Actif",
     attendance: 92,
-    modules: [
-      { name: "Accueil et diagnostic", done: true },
-      { name: "Communication orale", done: true },
-      { name: "Écrits professionnels", done: false },
-      { name: "Préparation certification", done: false }
-    ],
+    modules: structuredClone(programTemplates.ovp.modules),
     notes: [
       { date: "2026-05-10", type: "Objectif hebdomadaire", text: "Travailler la présentation d'un parcours professionnel." }
     ]
@@ -76,7 +71,7 @@ const defaultLearners = [
   {
     id: crypto.randomUUID(),
     name: "Lucas Martin",
-    program: "Numérique débutant",
+    program: "A2SP : Agent de Sûreté et de Sécurité Privée",
     coach: "Karim B.",
     modality: "Distanciel",
     startDate: "2026-01-22",
@@ -95,7 +90,7 @@ const defaultLearners = [
   {
     id: crypto.randomUUID(),
     name: "Aïcha Diallo",
-    program: "Remise à niveau",
+    program: "FPA : Formateur Pour Adulte",
     coach: "Claire T.",
     modality: "Hybride",
     startDate: "2026-03-18",

@@ -308,7 +308,13 @@
               </label>
               <label>
                 <span>Diplôme / formation suivie par le stagiaire</span>
-                <input id="tutorDiploma" placeholder="Repris depuis la fiche stagiaire si vide">
+                <select id="tutorDiploma">
+                  <option value="">Repris depuis la fiche stagiaire si vide</option>
+                  <option>OVP : Opérateur en Video Protection</option>
+                  <option>A2SP : Agent de Sûreté et de Sécurité Privée</option>
+                  <option>DSP : Dirigeant d'Entreprise de Sécurité Privée</option>
+                  <option>FPA : Formateur Pour Adulte</option>
+                </select>
               </label>
               <div class="form-grid compact">
                 <label>
@@ -508,13 +514,13 @@
           </label>
           <label>
             <span>Formation</span>
-            <input id="learnerProgram" list="programSuggestions" required placeholder="Ex. OVP - Opérateur en vidéoprotection">
-            <datalist id="programSuggestions">
-              <option value="OVP - Opérateur en vidéoprotection"></option>
-              <option value="Français professionnel"></option>
-              <option value="Numérique débutant"></option>
-              <option value="Remise à niveau"></option>
-            </datalist>
+            <select id="learnerProgram" required>
+              <option value="">Choisir une formation</option>
+              <option>OVP : Opérateur en Video Protection</option>
+              <option>A2SP : Agent de Sûreté et de Sécurité Privée</option>
+              <option>DSP : Dirigeant d'Entreprise de Sécurité Privée</option>
+              <option>FPA : Formateur Pour Adulte</option>
+            </select>
           </label>
           <label>
             <span>Référent</span>
