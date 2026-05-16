@@ -1,11 +1,12 @@
-const CACHE_NAME = "alliance-suivi-v1";
+const CACHE_NAME = "alliance-suivi-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
   "/manifest.webmanifest",
-  "/app-icon.svg"
+  "/app-icon-192.png",
+  "/app-icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
