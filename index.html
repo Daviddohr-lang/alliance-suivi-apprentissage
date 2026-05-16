@@ -61,6 +61,10 @@
             <span aria-hidden="true">▦</span>
             Tableau de bord
           </button>
+          <button class="nav-item" data-view="profiles" type="button">
+            <span aria-hidden="true">◧</span>
+            Profils
+          </button>
           <button class="nav-item" data-view="learners" type="button">
             <span aria-hidden="true">◉</span>
             Apprenants
@@ -132,6 +136,22 @@
               <div class="program-list" id="programList"></div>
             </section>
           </div>
+        </section>
+
+        <section class="view" id="profilesView" aria-labelledby="profilesTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="profilesTitle">Profils et accès</h2>
+              <p>Chaque acteur voit uniquement ce qui le concerne. Alliance conserve la vision complète.</p>
+            </div>
+          </div>
+
+          <div class="access-summary">
+            <strong>Application de suivi alternance avec accès par profil</strong>
+            <span>Centre de formation, formateurs, tuteurs entreprise et apprentis/stagiaires partagent le même outil, avec des droits adaptés à leur rôle.</span>
+          </div>
+
+          <div class="profile-grid" id="profileGrid"></div>
         </section>
 
         <section class="view" id="learnersView" aria-labelledby="learnersTitle">

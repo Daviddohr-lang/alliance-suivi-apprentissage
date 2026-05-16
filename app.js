@@ -136,6 +136,73 @@ const defaultTutors = [
   }
 ];
 
+const profileAccess = [
+  {
+    title: "Centre de formation / Alliance",
+    badge: "Accès complet",
+    intent: "Alliance pilote l'ensemble du suivi et garde la vision complète.",
+    canSee: [
+      "dossiers apprentis",
+      "contrats",
+      "assiduité",
+      "progression pédagogique",
+      "documents",
+      "alertes",
+      "examens",
+      "statistiques",
+      "conformité Qualiopi / OPCO"
+    ]
+  },
+  {
+    title: "Formateur",
+    badge: "Accès pédagogique",
+    intent: "Le formateur renseigne le suivi pédagogique et la préparation examen.",
+    canSee: [
+      "présences",
+      "évaluations",
+      "compétences OVP acquises",
+      "observations",
+      "difficultés",
+      "travaux à rendre",
+      "préparation examen"
+    ]
+  },
+  {
+    title: "Tuteur entreprise",
+    badge: "Accès entreprise",
+    intent: "Le tuteur suit uniquement la partie entreprise du stagiaire rattaché.",
+    canSee: [
+      "missions réalisées en entreprise",
+      "comportement professionnel",
+      "ponctualité",
+      "autonomie",
+      "respect des consignes",
+      "utilisation des outils vidéo",
+      "observations terrain",
+      "alertes éventuelles"
+    ]
+  },
+  {
+    title: "Apprenti / stagiaire",
+    badge: "Accès personnel",
+    intent: "Le stagiaire consulte son parcours et dépose ses justificatifs ou demandes.",
+    canSee: [
+      "planning",
+      "progression",
+      "documents",
+      "évaluations",
+      "objectifs",
+      "messages",
+      "absences",
+      "travaux à remettre",
+      "justificatifs d'absence",
+      "documents administratifs",
+      "comptes rendus",
+      "demandes particulières"
+    ]
+  }
+];
+
 let state = loadState();
 let selectedLearnerId = state.learners[0]?.id || null;
 let selectedMessageLearnerId = state.learners[0]?.id || null;
@@ -144,6 +211,7 @@ let currentRole = null;
 
 const views = {
   dashboard: document.querySelector("#dashboardView"),
+  profiles: document.querySelector("#profilesView"),
   learners: document.querySelector("#learnersView"),
   tutors: document.querySelector("#tutorsView"),
   followup: document.querySelector("#followupView"),
@@ -156,6 +224,7 @@ const metricGrid = document.querySelector("#metricGrid");
 const riskList = document.querySelector("#riskList");
 const riskCount = document.querySelector("#riskCount");
 const programList = document.querySelector("#programList");
+const profileGrid = document.querySelector("#profileGrid");
 const learnerList = document.querySelector("#learnerList");
 const detailPanel = document.querySelector("#detailPanel");
 const searchInput = document.querySelector("#searchInput");
@@ -365,6 +434,7 @@ function render() {
   updateNavigationAccess();
   renderOrganization();
   renderDashboard();
+  renderProfiles();
   renderLearners();
   renderTutors();
   renderFollowup();
@@ -480,6 +550,23 @@ function groupPrograms(learners) {
     count: items.length,
     progress: Math.round(items.reduce((sum, item) => sum + progressOf(item), 0) / items.length)
   }));
+}
+
+function renderProfiles() {
+  profileGrid.innerHTML = profileAccess.map((profile) => `
+    <article class="profile-card">
+      <div class="profile-card-heading">
+        <div>
+          <h3>${escapeHtml(profile.title)}</h3>
+          <p>${escapeHtml(profile.intent)}</p>
+        </div>
+        <span>${escapeHtml(profile.badge)}</span>
+      </div>
+      <div class="profile-rights">
+        ${profile.canSee.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+      </div>
+    </article>
+  `).join("");
 }
 
 function renderLearners() {
