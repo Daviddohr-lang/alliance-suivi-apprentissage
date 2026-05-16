@@ -117,11 +117,22 @@ const defaultTutors = [
   {
     id: crypto.randomUUID(),
     learnerId: defaultLearners[0].id,
-    name: "Jean Dupont",
+    firstName: "Jean",
+    lastName: "Dupont",
+    position: "Tuteur entreprise",
     company: "Entreprise partenaire",
+    diploma: defaultLearners[0].program,
     phone: "06 00 00 00 00",
     email: "tuteur@entreprise.fr",
-    notes: "Point d'accueil réalisé. Prévoir un retour sur les premières missions."
+    notes: "Point d'accueil réalisé. Prévoir un retour sur les premières missions.",
+    messages: [
+      {
+        id: crypto.randomUUID(),
+        sender: "Centre",
+        text: "Bonjour, nous vous confirmons le démarrage du suivi du stagiaire.",
+        date: "2026-05-16T09:00:00.000Z"
+      }
+    ]
   }
 ];
 
@@ -273,11 +284,15 @@ function normalizeTutors(tutors) {
   return tutors.map((tutor) => ({
     id: tutor.id || crypto.randomUUID(),
     learnerId: tutor.learnerId || "",
-    name: tutor.name || "",
+    firstName: tutor.firstName || splitTutorName(tutor.name).firstName,
+    lastName: tutor.lastName || splitTutorName(tutor.name).lastName,
+    position: tutor.position || "",
     company: tutor.company || "",
+    diploma: tutor.diploma || "",
     phone: tutor.phone || "",
     email: tutor.email || "",
-    notes: tutor.notes || ""
+    notes: tutor.notes || "",
+    messages: tutor.messages || []
   }));
 }
 
@@ -532,8 +547,8 @@ function renderDetail() {
     </div>
     <div class="linked-tutor">
       <span>Tuteur entreprise</span>
-      <strong>${escapeHtml(tutor?.name || "Non renseigné")}</strong>
-      <p>${escapeHtml(tutor ? `${tutor.company || "Structure non renseignée"} · ${tutor.phone || "Téléphone non renseigné"}` : "Ajoutez un tuteur depuis l'onglet Tuteurs.")}</p>
+      <strong>${escapeHtml(tutor ? tutorFullName(tutor) : "Non renseigné")}</strong>
+      <p>${escapeHtml(tutor ? `${tutor.position || "Poste non renseigné"} · ${tutor.company || "Entreprise non renseignée"} · ${tutor.phone || "Téléphone non renseigné"}` : "Ajoutez un tuteur depuis l'onglet Tuteurs.")}</p>
     </div>
     <label class="modality-editor">
       <span>Changer la modalité</span>
@@ -598,21 +613,47 @@ function renderTutors() {
   tutorList.innerHTML = tutors.length
     ? tutors.map((tutor) => {
       const learner = state.learners.find((item) => item.id === tutor.learnerId);
+      const messages = tutor.messages || [];
       return `
         <article class="tutor-card">
           <div class="tutor-card-top">
             <div>
-              <strong>${escapeHtml(tutor.name || "Tuteur sans nom")}</strong>
-              <span>${escapeHtml(tutor.company || "Structure non renseignée")}</span>
+              <strong>${escapeHtml(tutorFullName(tutor) || "Tuteur sans nom")}</strong>
+              <span>${escapeHtml(tutor.position || "Poste non renseigné")} · ${escapeHtml(tutor.company || "Entreprise non renseignée")}</span>
             </div>
             <button class="danger-link" type="button" data-delete-tutor="${tutor.id}">Supprimer</button>
           </div>
           <div class="tutor-info-grid">
             <div><span>Stagiaire</span><strong>${escapeHtml(learner?.name || "Non rattaché")}</strong></div>
+            <div><span>Diplôme suivi</span><strong>${escapeHtml(tutor.diploma || learner?.program || "Non renseigné")}</strong></div>
             <div><span>Téléphone</span><strong>${escapeHtml(tutor.phone || "Non renseigné")}</strong></div>
             <div><span>E-mail</span><strong>${escapeHtml(tutor.email || "Non renseigné")}</strong></div>
           </div>
           <p>${escapeHtml(tutor.notes || "Aucune note de suivi.")}</p>
+          <div class="tutor-message-thread">
+            ${messages.length
+              ? messages.map((message) => `
+                <article class="tutor-message ${message.sender === "Tuteur" ? "from-tutor" : "from-center"}">
+                  <small>${escapeHtml(message.sender)} · ${formatDateTime(message.date)}</small>
+                  <p>${escapeHtml(message.text)}</p>
+                </article>
+              `).join("")
+              : `<div class="empty-state">Aucun message avec ce tuteur.</div>`}
+          </div>
+          <form class="tutor-message-form" data-tutor-message-form="${tutor.id}">
+            <label>
+              <span>Expéditeur</span>
+              <select name="sender">
+                <option value="Centre">Centre</option>
+                <option value="Tuteur">Tuteur</option>
+              </select>
+            </label>
+            <label>
+              <span>Message</span>
+              <textarea name="message" rows="2" placeholder="Écrire au tuteur..." required></textarea>
+            </label>
+            <button class="primary-button" type="submit">Envoyer</button>
+          </form>
         </article>
       `;
     }).join("")
@@ -620,6 +661,10 @@ function renderTutors() {
 
   tutorList.querySelectorAll("[data-delete-tutor]").forEach((button) => {
     button.addEventListener("click", () => deleteTutor(button.dataset.deleteTutor));
+  });
+
+  tutorList.querySelectorAll("[data-tutor-message-form]").forEach((form) => {
+    form.addEventListener("submit", addTutorMessage);
   });
 }
 
@@ -826,6 +871,7 @@ function addLearner(event) {
 function addTutor(event) {
   event.preventDefault();
   const learnerId = tutorLearner.value;
+  const learner = state.learners.find((item) => item.id === learnerId);
   if (!learnerId) {
     return;
   }
@@ -833,11 +879,15 @@ function addTutor(event) {
   const tutor = {
     id: crypto.randomUUID(),
     learnerId,
-    name: document.querySelector("#tutorName").value.trim(),
+    firstName: document.querySelector("#tutorFirstName").value.trim(),
+    lastName: document.querySelector("#tutorLastName").value.trim(),
+    position: document.querySelector("#tutorPosition").value.trim(),
     company: document.querySelector("#tutorCompany").value.trim(),
+    diploma: document.querySelector("#tutorDiploma").value.trim() || learner?.program || "",
     phone: document.querySelector("#tutorPhone").value.trim(),
     email: document.querySelector("#tutorEmail").value.trim(),
-    notes: document.querySelector("#tutorNotes").value.trim()
+    notes: document.querySelector("#tutorNotes").value.trim(),
+    messages: []
   };
 
   state.tutors = state.tutors || [];
@@ -847,6 +897,28 @@ function addTutor(event) {
   tutorForm.reset();
   setView("tutors");
   render();
+}
+
+function addTutorMessage(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const tutor = (state.tutors || []).find((item) => item.id === form.dataset.tutorMessageForm);
+  const text = new FormData(form).get("message")?.toString().trim();
+  const sender = new FormData(form).get("sender")?.toString() || "Centre";
+  if (!tutor || !text) {
+    return;
+  }
+
+  tutor.messages = tutor.messages || [];
+  tutor.messages.push({
+    id: crypto.randomUUID(),
+    sender,
+    text,
+    date: new Date().toISOString()
+  });
+
+  saveState();
+  renderTutors();
 }
 
 function addNote(event) {
@@ -1193,20 +1265,27 @@ function updateCenterLogo(event) {
 }
 
 function exportCsv() {
-  const headers = ["Nom", "Formation", "Modalité", "Référent", "Tuteur", "Entreprise tuteur", "Téléphone tuteur", "Date entrée", "Statut", "Présence", "Progression"];
-  const rows = state.learners.map((learner) => [
-    learner.name,
-    learner.program,
-    learner.modality || "Présentiel",
-    learner.coach,
-    state.tutors?.find((tutor) => tutor.learnerId === learner.id)?.name || "",
-    state.tutors?.find((tutor) => tutor.learnerId === learner.id)?.company || "",
-    state.tutors?.find((tutor) => tutor.learnerId === learner.id)?.phone || "",
-    learner.startDate,
-    learner.status,
-    `${learner.attendance}%`,
-    `${progressOf(learner)}%`
-  ]);
+  const headers = ["Nom", "Formation", "Modalité", "Référent", "Nom tuteur", "Prénom tuteur", "Poste tuteur", "Entreprise tuteur", "Diplôme suivi", "Téléphone tuteur", "E-mail tuteur", "Date entrée", "Statut", "Présence", "Progression"];
+  const rows = state.learners.map((learner) => {
+    const tutor = state.tutors?.find((item) => item.learnerId === learner.id);
+    return [
+      learner.name,
+      learner.program,
+      learner.modality || "Présentiel",
+      learner.coach,
+      tutor?.lastName || "",
+      tutor?.firstName || "",
+      tutor?.position || "",
+      tutor?.company || "",
+      tutor?.diploma || learner.program,
+      tutor?.phone || "",
+      tutor?.email || "",
+      learner.startDate,
+      learner.status,
+      `${learner.attendance}%`,
+      `${progressOf(learner)}%`
+    ];
+  });
 
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
@@ -1247,7 +1326,7 @@ function deleteLearner(learnerId) {
 
 function deleteTutor(tutorId) {
   const tutor = (state.tutors || []).find((item) => item.id === tutorId);
-  if (!tutor || !confirm(`Supprimer le tuteur ${tutor.name || "sélectionné"} ?`)) {
+  if (!tutor || !confirm(`Supprimer le tuteur ${tutorFullName(tutor) || "sélectionné"} ?`)) {
     return;
   }
 
@@ -1345,6 +1424,26 @@ function generateAccessCode(name) {
   }
 
   return `${prefix}-${String(hash).padStart(4, "0")}`;
+}
+
+function splitTutorName(name = "") {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { firstName: "", lastName: "" };
+  }
+
+  if (parts.length === 1) {
+    return { firstName: "", lastName: parts[0] };
+  }
+
+  return {
+    firstName: parts.slice(0, -1).join(" "),
+    lastName: parts.at(-1)
+  };
+}
+
+function tutorFullName(tutor) {
+  return [tutor.firstName, tutor.lastName].filter(Boolean).join(" ").trim();
 }
 
 function normalizeAccessCode(code) {
