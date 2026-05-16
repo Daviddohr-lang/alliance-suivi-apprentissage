@@ -22,47 +22,24 @@
           <p>Choisissez votre espace pour accéder à l'outil de suivi.</p>
         </div>
 
-        <div class="auth-grid">
-          <form class="auth-panel" id="adminLoginForm">
-            <h2>Admin Alliance</h2>
-            <label>
-              <span>Code admin</span>
-              <input id="adminAccessCode" type="password" placeholder="Code admin" required>
-            </label>
-            <button class="primary-button" type="submit">Entrer côté Alliance</button>
-            <p class="helper-text" id="adminLoginHelp">Code de test : ALLIANCE2026</p>
-          </form>
-
-          <form class="auth-panel" id="trainerLoginForm">
-            <h2>Formateur</h2>
-            <label>
-              <span>Code formateur</span>
-              <input id="trainerAccessCodeLogin" placeholder="Ex. FORM-2026" required>
-            </label>
-            <button class="primary-button" type="submit">Entrer côté formateur</button>
-            <p class="helper-text" id="trainerLoginHelp">Le code est visible dans la fiche formateur.</p>
-          </form>
-
-          <form class="auth-panel" id="tutorLoginForm">
-            <h2>Tuteur</h2>
-            <label>
-              <span>Code tuteur</span>
-              <input id="tutorAccessCodeLogin" placeholder="Ex. TUT-1234" required>
-            </label>
-            <button class="primary-button" type="submit">Entrer côté tuteur</button>
-            <p class="helper-text" id="tutorLoginHelp">Le code est remis par Alliance.</p>
-          </form>
-
-          <form class="auth-panel" id="publicTraineeLoginForm">
-            <h2>Stagiaire</h2>
-            <label>
-              <span>Code stagiaire</span>
-              <input id="publicTraineeAccessCode" placeholder="Ex. LIBE-8508" required>
-            </label>
-            <button class="primary-button" type="submit">Entrer dans mon espace</button>
-            <p class="helper-text" id="publicTraineeLoginHelp">Le code est remis par le centre.</p>
-          </form>
-        </div>
+        <form class="auth-panel auth-panel-single" id="profileLoginForm">
+          <h2>Accès sécurisé</h2>
+          <label>
+            <span>Profil</span>
+            <select id="profileLoginRole" required>
+              <option value="admin">Admin Alliance</option>
+              <option value="trainer">Formateur</option>
+              <option value="tutor">Tuteur</option>
+              <option value="trainee">Stagiaire</option>
+            </select>
+          </label>
+          <label>
+            <span>Code d'accès</span>
+            <input id="profileAccessCode" type="password" placeholder="Entrez votre code" required>
+          </label>
+          <button class="primary-button" type="submit">Se connecter</button>
+          <p class="helper-text" id="profileLoginHelp">Sélectionnez votre profil puis renseignez le code remis par Alliance.</p>
+        </form>
       </div>
     </section>
 

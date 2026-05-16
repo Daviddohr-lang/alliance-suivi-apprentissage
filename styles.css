@@ -51,7 +51,7 @@ button {
 
 .auth-card {
   display: grid;
-  width: min(1180px, 100%);
+  width: min(680px, 100%);
   gap: 24px;
 }
 
@@ -63,6 +63,10 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(280px, 1fr));
   gap: 18px;
+}
+
+.auth-panel-single {
+  width: 100%;
 }
 
 .auth-panel {

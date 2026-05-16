@@ -311,10 +311,7 @@ const centerPreview = document.querySelector("#centerPreview");
 const centerLogoInput = document.querySelector("#centerLogoInput");
 const authScreen = document.querySelector("#authScreen");
 const appShell = document.querySelector("#appShell");
-const adminLoginForm = document.querySelector("#adminLoginForm");
-const trainerLoginForm = document.querySelector("#trainerLoginForm");
-const tutorLoginForm = document.querySelector("#tutorLoginForm");
-const publicTraineeLoginForm = document.querySelector("#publicTraineeLoginForm");
+const profileLoginForm = document.querySelector("#profileLoginForm");
 const logoutButton = document.querySelector("#logoutButton");
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -336,10 +333,7 @@ noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
 traineeLogoutButton.addEventListener("click", logoutTrainee);
-adminLoginForm.addEventListener("submit", loginAdminSession);
-trainerLoginForm.addEventListener("submit", loginTrainerSession);
-tutorLoginForm.addEventListener("submit", loginTutorSession);
-publicTraineeLoginForm.addEventListener("submit", loginPublicTraineeSession);
+profileLoginForm.addEventListener("submit", loginProfileSession);
 centerForm.addEventListener("submit", saveCenter);
 centerLogoInput.addEventListener("change", updateCenterLogo);
 
@@ -1345,12 +1339,32 @@ function addMessage(event) {
   renderMessages();
 }
 
-function loginAdminSession(event) {
+function loginProfileSession(event) {
   event.preventDefault();
-  const code = document.querySelector("#adminAccessCode").value.trim();
-  const helper = document.querySelector("#adminLoginHelp");
+  const role = document.querySelector("#profileLoginRole").value;
+  const code = normalizeAccessCode(document.querySelector("#profileAccessCode").value);
+  const helper = document.querySelector("#profileLoginHelp");
 
-  if (code !== ADMIN_CODE) {
+  if (role === "admin") {
+    loginAdminWithCode(code, helper);
+    return;
+  }
+
+  if (role === "trainer") {
+    loginTrainerWithCode(code, helper);
+    return;
+  }
+
+  if (role === "tutor") {
+    loginTutorWithCode(code, helper);
+    return;
+  }
+
+  loginTraineeWithCode(code, helper);
+}
+
+function loginAdminWithCode(code, helper) {
+  if (code !== normalizeAccessCode(ADMIN_CODE)) {
     helper.textContent = "Code admin incorrect.";
     return;
   }
@@ -1360,16 +1374,13 @@ function loginAdminSession(event) {
   currentTrainerId = null;
   currentTutorId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "admin" }));
-  document.querySelector("#adminAccessCode").value = "";
-  helper.textContent = "Code de test : ALLIANCE2026";
+  document.querySelector("#profileAccessCode").value = "";
+  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
   setView("dashboard");
   render();
 }
 
-function loginTrainerSession(event) {
-  event.preventDefault();
-  const code = normalizeAccessCode(document.querySelector("#trainerAccessCodeLogin").value);
-  const helper = document.querySelector("#trainerLoginHelp");
+function loginTrainerWithCode(code, helper) {
   const trainer = (state.trainers || []).find((item) => normalizeAccessCode(item.accessCode) === code);
 
   if (!trainer) {
@@ -1382,16 +1393,13 @@ function loginTrainerSession(event) {
   currentTraineeId = null;
   currentTutorId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainer", trainerId: trainer.id }));
-  document.querySelector("#trainerAccessCodeLogin").value = "";
-  helper.textContent = "Le code est visible dans la fiche formateur.";
+  document.querySelector("#profileAccessCode").value = "";
+  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
   setView("dashboard");
   render();
 }
 
-function loginTutorSession(event) {
-  event.preventDefault();
-  const code = normalizeAccessCode(document.querySelector("#tutorAccessCodeLogin").value);
-  const helper = document.querySelector("#tutorLoginHelp");
+function loginTutorWithCode(code, helper) {
   const tutor = (state.tutors || []).find((item) => normalizeAccessCode(item.accessCode) === code);
 
   if (!tutor) {
@@ -1404,16 +1412,13 @@ function loginTutorSession(event) {
   currentTraineeId = null;
   currentTrainerId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "tutor", tutorId: tutor.id }));
-  document.querySelector("#tutorAccessCodeLogin").value = "";
-  helper.textContent = "Le code est remis par Alliance.";
+  document.querySelector("#profileAccessCode").value = "";
+  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
   setView("dashboard");
   render();
 }
 
-function loginPublicTraineeSession(event) {
-  event.preventDefault();
-  const code = normalizeAccessCode(document.querySelector("#publicTraineeAccessCode").value);
-  const helper = document.querySelector("#publicTraineeLoginHelp");
+function loginTraineeWithCode(code, helper) {
   const learner = state.learners.find((item) => normalizeAccessCode(item.accessCode || generateAccessCode(item.name)) === code);
 
   if (!learner) {
@@ -1426,8 +1431,8 @@ function loginPublicTraineeSession(event) {
   currentTrainerId = null;
   currentTutorId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: learner.id }));
-  document.querySelector("#publicTraineeAccessCode").value = "";
-  helper.textContent = "Le code est remis par le centre.";
+  document.querySelector("#profileAccessCode").value = "";
+  helper.textContent = "Sélectionnez votre profil puis renseignez le code remis par Alliance.";
   setView("trainee");
   render();
 }
