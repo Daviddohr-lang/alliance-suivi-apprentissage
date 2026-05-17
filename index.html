@@ -63,6 +63,10 @@
             <span aria-hidden="true">◧</span>
             Profils
           </button>
+          <button class="nav-item" data-view="referentials" type="button">
+            <span aria-hidden="true">☷</span>
+            Référentiels
+          </button>
           <button class="nav-item" data-view="learners" type="button">
             <span aria-hidden="true">◉</span>
             Apprenants
@@ -164,6 +168,52 @@
           </div>
 
           <div class="profile-home-grid" id="profileHomeGrid"></div>
+        </section>
+
+        <section class="view" id="referentialsView" aria-labelledby="referentialsTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="referentialsTitle">Référentiels</h2>
+              <p>Créez les menus de compétences par formation, modalité et module.</p>
+            </div>
+          </div>
+
+          <div class="referentials-layout">
+            <form class="panel referential-form" id="referentialItemForm">
+              <h3>Ajouter une compétence</h3>
+              <label>
+                <span>Formation</span>
+                <select id="referentialProgram" required></select>
+              </label>
+              <div class="form-grid compact">
+                <label>
+                  <span>Modalité</span>
+                  <select id="referentialModality">
+                    <option>Présentiel</option>
+                    <option>Distanciel</option>
+                    <option>Hybride</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Sous-menu / module</span>
+                  <input id="referentialCategory" required placeholder="Ex. Environnement juridique">
+                </label>
+              </div>
+              <label>
+                <span>Compétence ou objectif</span>
+                <textarea id="referentialItemText" rows="4" required placeholder="Ex. Connaître le livre VI du CSI"></textarea>
+              </label>
+              <button class="primary-button" type="submit">Ajouter au référentiel</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Liste des référentiels</h3>
+                <span id="referentialCount">0</span>
+              </div>
+              <div class="referential-list" id="referentialList"></div>
+            </section>
+          </div>
         </section>
 
         <section class="view" id="learnersView" aria-labelledby="learnersTitle">

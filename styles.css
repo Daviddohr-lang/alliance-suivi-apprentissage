@@ -315,6 +315,7 @@ h3 {
 .profile-card,
 .profile-home-card,
 .trainer-card,
+.referential-card,
 .detail-panel,
 .toolbar {
   border: 1px solid var(--line);
@@ -346,6 +347,7 @@ label span,
 .profile-grid,
 .profile-home-grid,
 .trainers-layout,
+.referentials-layout,
 .followup-layout,
 .content-grid,
 .messages-layout,
@@ -718,6 +720,59 @@ textarea {
 .module-item input {
   width: 18px;
   min-height: 18px;
+}
+
+.referentials-layout {
+  grid-template-columns: minmax(300px, 0.85fr) minmax(360px, 1.15fr);
+  align-items: start;
+}
+
+.referential-list,
+.referential-categories,
+.referential-items {
+  display: grid;
+  gap: 10px;
+}
+
+.referential-card {
+  padding: 16px;
+}
+
+.referential-card-top,
+.referential-item,
+.referential-category summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.referential-card-top span,
+.referential-category small {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.referential-category {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.referential-category summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.referential-items {
+  margin-top: 10px;
+}
+
+.referential-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .followup-layout {
@@ -1222,6 +1277,7 @@ dialog::backdrop {
     .profile-grid,
     .profile-home-grid,
     .trainers-layout,
+    .referentials-layout,
     .content-grid,
     .followup-layout,
     .messages-layout,

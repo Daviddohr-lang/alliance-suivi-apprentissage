@@ -53,6 +53,74 @@ const programTemplates = {
   }
 };
 
+const defaultReferentials = [
+  {
+    id: "ovp-presentiel",
+    program: "OVP : Opérateur en Video Protection",
+    modality: "Présentiel",
+    categories: [
+      {
+        id: "ovp-presentiel-objectifs",
+        title: "Objectifs pédagogiques",
+        items: [
+          { id: "ovp-presentiel-1", text: "Connaître la réglementation relative au code de la sécurité privée" },
+          { id: "ovp-presentiel-2", text: "Faire respecter la réglementation" },
+          { id: "ovp-presentiel-3", text: "Prévenir et gérer les situations de conflits" },
+          { id: "ovp-presentiel-4", text: "Agir dans le respect de la loi quant à la conservation des images" },
+          { id: "ovp-presentiel-5", text: "Connaître le fonctionnement de son matériel" }
+        ]
+      },
+      {
+        id: "ovp-presentiel-modules",
+        title: "Modules présentiels",
+        items: [
+          { id: "ovp-presentiel-6", text: "Environnement juridique de la vidéoprotection" },
+          { id: "ovp-presentiel-7", text: "Environnement juridique national et européen de la vidéoprotection et de la télévidéoprotection" },
+          { id: "ovp-presentiel-8", text: "Opérationnel et stratégique" },
+          { id: "ovp-presentiel-9", text: "Assurer la sécurité des personnes, des lieux, des espaces ou des bâtiments à l'aide de la vidéoprotection et télévidéoprotection" },
+          { id: "ovp-presentiel-10", text: "Maîtriser la communication" },
+          { id: "ovp-presentiel-11", text: "Vidéoprotection" },
+          { id: "ovp-presentiel-12", text: "Connaître et maîtriser les différents systèmes de sécurité et outils de travail" },
+          { id: "ovp-presentiel-13", text: "Maîtriser les systèmes d'exploitation" },
+          { id: "ovp-presentiel-14", text: "Environnement juridique de la sécurité privée" },
+          { id: "ovp-presentiel-15", text: "Connaître le livre VI du CSI" },
+          { id: "ovp-presentiel-16", text: "Connaître les dispositions du code pénal" },
+          { id: "ovp-presentiel-17", text: "Les principes de la République Française" },
+          { id: "ovp-presentiel-18", text: "Comportemental" },
+          { id: "ovp-presentiel-19", text: "Maîtriser la relation avec les interlocuteurs : clients, services de secours, services compétents de l'État" },
+          { id: "ovp-presentiel-20", text: "Environnement site sensible et site caractérisé sensible" },
+          { id: "ovp-presentiel-21", text: "Immersion professionnelle : 35 heures de stage en entreprise obligatoire" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "ovp-distanciel",
+    program: "OVP : Opérateur en Video Protection",
+    modality: "Distanciel",
+    categories: [
+      {
+        id: "ovp-distanciel-videoprotection",
+        title: "Vidéoprotection",
+        items: [
+          { id: "ovp-distanciel-1", text: "Les règles républicaines" },
+          { id: "ovp-distanciel-2", text: "Les sites sensibles et d'importance vitale" },
+          { id: "ovp-distanciel-3", text: "Le cadre légal et technique de l'opérateur en vidéosurveillance" },
+          { id: "ovp-distanciel-4", text: "La vidéosurveillance, les règles d'installation R82" },
+          { id: "ovp-distanciel-5", text: "Questionnaire OVP" }
+        ]
+      }
+    ]
+  }
+];
+
+const trainingPrograms = [
+  "OVP : Opérateur en Video Protection",
+  "A2SP : Agent de Sûreté et de Sécurité Privée",
+  "DSP : Dirigeant d'Entreprise de Sécurité Privée",
+  "FPA : Formateur Pour Adulte"
+];
+
 const defaultLearners = [
   {
     id: crypto.randomUUID(),
@@ -267,6 +335,7 @@ let currentRole = null;
 const views = {
   dashboard: document.querySelector("#dashboardView"),
   profiles: document.querySelector("#profilesView"),
+  referentials: document.querySelector("#referentialsView"),
   learners: document.querySelector("#learnersView"),
   trainers: document.querySelector("#trainersView"),
   tutors: document.querySelector("#tutorsView"),
@@ -282,6 +351,10 @@ const riskCount = document.querySelector("#riskCount");
 const programList = document.querySelector("#programList");
 const profileGrid = document.querySelector("#profileGrid");
 const profileHomeGrid = document.querySelector("#profileHomeGrid");
+const referentialItemForm = document.querySelector("#referentialItemForm");
+const referentialProgram = document.querySelector("#referentialProgram");
+const referentialList = document.querySelector("#referentialList");
+const referentialCount = document.querySelector("#referentialCount");
 const learnerList = document.querySelector("#learnerList");
 const detailPanel = document.querySelector("#detailPanel");
 const searchInput = document.querySelector("#searchInput");
@@ -332,6 +405,7 @@ statusFilter.addEventListener("change", renderLearners);
 learnerForm.addEventListener("submit", addLearner);
 trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
+referentialItemForm.addEventListener("submit", addReferentialItem);
 noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
@@ -353,24 +427,35 @@ async function initializeApp() {
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    return { learners: defaultLearners, trainers: defaultTrainers, tutors: defaultTutors, center: defaultCenter };
+    return createDefaultState();
   }
 
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.learners)) {
-      return { learners: defaultLearners, trainers: defaultTrainers, tutors: defaultTutors, center: defaultCenter };
+      return createDefaultState();
     }
 
     return {
       learners: parsed.learners.map(normalizeLearner),
       trainers: normalizeTrainers(parsed.trainers || []),
       tutors: normalizeTutors(parsed.tutors || []),
+      referentials: normalizeReferentials(parsed.referentials || defaultReferentials),
       center: { ...defaultCenter, ...(parsed.center || {}) }
     };
   } catch {
-    return { learners: defaultLearners, trainers: defaultTrainers, tutors: defaultTutors, center: defaultCenter };
+    return createDefaultState();
   }
+}
+
+function createDefaultState(center = defaultCenter) {
+  return {
+    learners: structuredClone(defaultLearners),
+    trainers: structuredClone(defaultTrainers),
+    tutors: structuredClone(defaultTutors),
+    referentials: structuredClone(defaultReferentials),
+    center
+  };
 }
 
 function restoreSession() {
@@ -456,6 +541,22 @@ function normalizeTrainers(trainers) {
   }));
 }
 
+function normalizeReferentials(referentials) {
+  return referentials.map((referential) => ({
+    id: referential.id || crypto.randomUUID(),
+    program: referential.program || "Formation non renseignée",
+    modality: referential.modality || "Présentiel",
+    categories: (referential.categories || []).map((category) => ({
+      id: category.id || crypto.randomUUID(),
+      title: category.title || "Module sans titre",
+      items: (category.items || []).map((item) => ({
+        id: item.id || crypto.randomUUID(),
+        text: item.text || item.name || "Compétence sans titre"
+      }))
+    }))
+  }));
+}
+
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   saveServerState();
@@ -482,6 +583,7 @@ async function loadServerState() {
       learners: serverState.learners.map(normalizeLearner),
       trainers: normalizeTrainers(serverState.trainers || []),
       tutors: normalizeTutors(serverState.tutors || []),
+      referentials: normalizeReferentials(serverState.referentials || defaultReferentials),
       center: { ...defaultCenter, ...(serverState.center || {}) }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -527,6 +629,7 @@ function render() {
   renderOrganization();
   renderDashboard();
   renderProfiles();
+  renderReferentials();
   renderLearners();
   renderTrainers();
   renderTutors();
@@ -571,7 +674,7 @@ function updateNavigationAccess() {
 
 function getAllowedViews() {
   if (currentRole === "admin") {
-    return ["dashboard", "profiles", "learners", "trainers", "tutors", "followup", "messages", "trainee", "center"];
+    return ["dashboard", "profiles", "referentials", "learners", "trainers", "tutors", "followup", "messages", "trainee", "center"];
   }
 
   if (currentRole === "trainer") {
@@ -740,6 +843,67 @@ function renderProfiles() {
       </article>
     `;
   }).join("");
+}
+
+function renderReferentials() {
+  const referentials = state.referentials || [];
+  const programs = [...new Set([
+    ...trainingPrograms,
+    ...referentials.map((referential) => referential.program),
+    ...state.learners.map((learner) => learner.program)
+  ].filter(Boolean))];
+
+  referentialProgram.innerHTML = programs
+    .map((program) => `<option value="${escapeHtml(program)}">${escapeHtml(program)}</option>`)
+    .join("");
+
+  const itemCount = referentials.reduce((sum, referential) => (
+    sum + referential.categories.reduce((categorySum, category) => categorySum + category.items.length, 0)
+  ), 0);
+  referentialCount.textContent = itemCount;
+
+  referentialList.innerHTML = referentials.length
+    ? referentials.map((referential) => `
+      <article class="referential-card">
+        <div class="referential-card-top">
+          <div>
+            <strong>${escapeHtml(referential.program)}</strong>
+            <span>${escapeHtml(referential.modality)} · ${referential.categories.length} sous-menu(s)</span>
+          </div>
+          <button class="danger-link" type="button" data-delete-referential="${referential.id}">Supprimer</button>
+        </div>
+        <div class="referential-categories">
+          ${referential.categories.map((category) => `
+            <details class="referential-category" open>
+              <summary>
+                <span>${escapeHtml(category.title)}</span>
+                <small>${category.items.length} élément(s)</small>
+              </summary>
+              <div class="referential-items">
+                ${category.items.map((item) => `
+                  <div class="referential-item">
+                    <span>${escapeHtml(item.text)}</span>
+                    <button class="danger-link" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}">Retirer</button>
+                  </div>
+                `).join("") || `<div class="empty-state">Aucune compétence dans ce sous-menu.</div>`}
+              </div>
+            </details>
+          `).join("")}
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty-state">Aucun référentiel enregistré pour le moment.</div>`;
+
+  referentialList.querySelectorAll("[data-delete-referential]").forEach((button) => {
+    button.addEventListener("click", () => deleteReferential(button.dataset.deleteReferential));
+  });
+
+  referentialList.querySelectorAll("[data-delete-referential-item]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const [referentialId, categoryId, itemId] = button.dataset.deleteReferentialItem.split("|");
+      deleteReferentialItem(referentialId, categoryId, itemId);
+    });
+  });
 }
 
 function getProfileHomeItems(home) {
@@ -1275,6 +1439,48 @@ function addTutor(event) {
   render();
 }
 
+function addReferentialItem(event) {
+  event.preventDefault();
+  const program = referentialProgram.value;
+  const modality = document.querySelector("#referentialModality").value;
+  const categoryTitle = document.querySelector("#referentialCategory").value.trim();
+  const text = document.querySelector("#referentialItemText").value.trim();
+  if (!program || !categoryTitle || !text) {
+    return;
+  }
+
+  state.referentials = state.referentials || [];
+  let referential = state.referentials.find((item) => item.program === program && item.modality === modality);
+  if (!referential) {
+    referential = {
+      id: crypto.randomUUID(),
+      program,
+      modality,
+      categories: []
+    };
+    state.referentials.push(referential);
+  }
+
+  let category = referential.categories.find((item) => item.title.toLowerCase() === categoryTitle.toLowerCase());
+  if (!category) {
+    category = {
+      id: crypto.randomUUID(),
+      title: categoryTitle,
+      items: []
+    };
+    referential.categories.push(category);
+  }
+
+  category.items.push({
+    id: crypto.randomUUID(),
+    text
+  });
+
+  document.querySelector("#referentialItemText").value = "";
+  saveState();
+  renderReferentials();
+}
+
 function addTutorMessage(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -1771,6 +1977,7 @@ function importBackup(event) {
         learners: importedState.learners.map(normalizeLearner),
         trainers: normalizeTrainers(importedState.trainers || []),
         tutors: normalizeTutors(importedState.tutors || []),
+        referentials: normalizeReferentials(importedState.referentials || defaultReferentials),
         center: { ...defaultCenter, ...(importedState.center || {}) }
       };
       selectedLearnerId = state.learners[0]?.id || null;
@@ -1796,7 +2003,7 @@ function resetData() {
   }
 
   localStorage.removeItem(STORAGE_KEY);
-  state = { learners: structuredClone(defaultLearners), trainers: structuredClone(defaultTrainers), tutors: structuredClone(defaultTutors), center: state.center || defaultCenter };
+  state = createDefaultState(state.center || defaultCenter);
   selectedLearnerId = state.learners[0]?.id || null;
   saveState();
   render();
@@ -1841,6 +2048,30 @@ function deleteTutor(tutorId) {
   render();
 }
 
+function deleteReferential(referentialId) {
+  const referential = (state.referentials || []).find((item) => item.id === referentialId);
+  if (!referential || !confirm(`Supprimer le référentiel ${referential.program} - ${referential.modality} ?`)) {
+    return;
+  }
+
+  state.referentials = (state.referentials || []).filter((item) => item.id !== referentialId);
+  saveState();
+  render();
+}
+
+function deleteReferentialItem(referentialId, categoryId, itemId) {
+  const referential = (state.referentials || []).find((item) => item.id === referentialId);
+  const category = referential?.categories.find((item) => item.id === categoryId);
+  if (!category) {
+    return;
+  }
+
+  category.items = category.items.filter((item) => item.id !== itemId);
+  referential.categories = referential.categories.filter((item) => item.items.length);
+  saveState();
+  renderReferentials();
+}
+
 function updateLearnerModality(learnerId, modality) {
   const learner = state.learners.find((item) => item.id === learnerId);
   if (!learner) {
@@ -1855,6 +2086,33 @@ function updateLearnerModality(learnerId, modality) {
 function getProgramTemplate(program, modality = "Présentiel") {
   const normalized = program.toLowerCase();
   const normalizedModality = modality.toLowerCase();
+  const referentials = state.referentials || [];
+  const matchingReferentials = referentials.filter((referential) => sameProgram(referential.program, program));
+  const exactReferential = matchingReferentials.find((referential) => referential.modality.toLowerCase() === normalizedModality);
+
+  if (exactReferential) {
+    return {
+      label: exactReferential.program,
+      modality: exactReferential.modality,
+      modules: modulesFromReferential(exactReferential)
+    };
+  }
+
+  if (normalizedModality === "hybride" && matchingReferentials.length) {
+    const presentiel = matchingReferentials.find((referential) => referential.modality === "Présentiel");
+    const distanciel = matchingReferentials.find((referential) => referential.modality === "Distanciel");
+    if (presentiel || distanciel) {
+      return {
+        label: program,
+        modality: "Hybride",
+        modules: [
+          ...(presentiel ? modulesFromReferential(presentiel) : []),
+          ...(distanciel ? modulesFromReferential(distanciel) : [])
+        ]
+      };
+    }
+  }
+
   if (normalized.includes("ovp") || normalized.includes("vidéoprotection") || normalized.includes("video protection")) {
     if (normalizedModality === "présentiel") {
       return programTemplates.ovp;
@@ -1879,6 +2137,21 @@ function getProgramTemplate(program, modality = "Présentiel") {
   return null;
 }
 
+function modulesFromReferential(referential) {
+  return referential.categories.flatMap((category) => (
+    category.items.map((item) => ({
+      name: `${referential.modality} : ${category.title} : ${item.text}`,
+      done: false
+    }))
+  ));
+}
+
+function sameProgram(first, second) {
+  return normalizeText(first) === normalizeText(second)
+    || normalizeText(first).includes(normalizeText(second))
+    || normalizeText(second).includes(normalizeText(first));
+}
+
 function modulesForProgram(program, modality) {
   const template = getProgramTemplate(program, modality);
   if (template) {
@@ -1895,7 +2168,7 @@ function modulesForProgram(program, modality) {
 
 function applyTemplate(learnerId, template) {
   const learner = state.learners.find((item) => item.id === learnerId);
-  if (!learner || !confirm("Remplacer les modules actuels par le référentiel OVP ?")) {
+  if (!learner || !confirm(`Remplacer les modules actuels par le référentiel ${template.label} ?`)) {
     return;
   }
 
@@ -1979,6 +2252,15 @@ function personFullName(person) {
 
 function normalizeAccessCode(code) {
   return String(code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function escapeHtml(value) {
