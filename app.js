@@ -875,27 +875,25 @@ function renderReferentials() {
             <strong>${escapeHtml(referential.program)}</strong>
             <span>${escapeHtml(referential.modality)} · ${referential.categories.length} sous-menu(s)</span>
           </div>
-          <button class="danger-link" type="button" data-delete-referential="${referential.id}">Supprimer</button>
+          <button class="icon-danger-button" type="button" data-delete-referential="${referential.id}" aria-label="Supprimer le référentiel" title="Supprimer"></button>
         </div>
-        <div class="referential-categories">
-          ${referential.categories.map((category, categoryIndex) => `
-            <details class="referential-category" open>
+        <div class="referential-categories" data-referential-categories="${referential.id}">
+          ${referential.categories.map((category) => `
+            <details class="referential-category" open draggable="true" data-referential-id="${referential.id}" data-category-id="${category.id}">
               <summary>
+                <span class="drag-handle" aria-hidden="true"></span>
                 <span>${escapeHtml(category.title)}</span>
                 <span class="referential-actions">
-                  <button class="ghost-mini-button" type="button" data-move-category="${referential.id}|${category.id}|up" ${categoryIndex === 0 ? "disabled" : ""}>Monter</button>
-                  <button class="ghost-mini-button" type="button" data-move-category="${referential.id}|${category.id}|down" ${categoryIndex === referential.categories.length - 1 ? "disabled" : ""}>Descendre</button>
                   <small>${category.items.length} élément(s)</small>
                 </span>
               </summary>
-              <div class="referential-items">
-                ${category.items.map((item, itemIndex) => `
-                  <div class="referential-item">
+              <div class="referential-items" data-referential-id="${referential.id}" data-category-id="${category.id}">
+                ${category.items.map((item) => `
+                  <div class="referential-item" draggable="true" data-referential-id="${referential.id}" data-category-id="${category.id}" data-item-id="${item.id}">
+                    <span class="drag-handle" aria-hidden="true"></span>
                     <span>${escapeHtml(item.text)}</span>
                     <span class="referential-actions">
-                      <button class="ghost-mini-button" type="button" data-move-referential-item="${referential.id}|${category.id}|${item.id}|up" ${itemIndex === 0 ? "disabled" : ""}>Monter</button>
-                      <button class="ghost-mini-button" type="button" data-move-referential-item="${referential.id}|${category.id}|${item.id}|down" ${itemIndex === category.items.length - 1 ? "disabled" : ""}>Descendre</button>
-                      <button class="danger-link" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}">Retirer</button>
+                      <button class="icon-danger-button" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}" aria-label="Retirer cette compétence" title="Retirer"></button>
                     </span>
                   </div>
                 `).join("") || `<div class="empty-state">Aucune compétence dans ce sous-menu.</div>`}
@@ -918,19 +916,7 @@ function renderReferentials() {
     });
   });
 
-  referentialList.querySelectorAll("[data-move-category]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const [referentialId, categoryId, direction] = button.dataset.moveCategory.split("|");
-      moveReferentialCategory(referentialId, categoryId, direction);
-    });
-  });
-
-  referentialList.querySelectorAll("[data-move-referential-item]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const [referentialId, categoryId, itemId, direction] = button.dataset.moveReferentialItem.split("|");
-      moveReferentialItem(referentialId, categoryId, itemId, direction);
-    });
-  });
+  attachReferentialDragHandlers();
 }
 
 function renderReferentialCategoryOptions() {
@@ -943,6 +929,93 @@ function renderReferentialCategoryOptions() {
     ? categories.map((category) => `<option value="${escapeHtml(category.title)}">${escapeHtml(category.title)}</option>`).join("")
     : `<option value="">Aucun sous-menu existant</option>`;
   referentialCategorySelect.disabled = !categories.length;
+}
+
+function attachReferentialDragHandlers() {
+  referentialList.querySelectorAll(".referential-category, .referential-item").forEach((element) => {
+    element.addEventListener("dragstart", handleReferentialDragStart);
+    element.addEventListener("dragend", handleReferentialDragEnd);
+  });
+
+  referentialList.querySelectorAll(".referential-category, .referential-item, .referential-items").forEach((element) => {
+    element.addEventListener("dragover", handleReferentialDragOver);
+    element.addEventListener("dragleave", handleReferentialDragLeave);
+    element.addEventListener("drop", handleReferentialDrop);
+  });
+}
+
+function handleReferentialDragStart(event) {
+  const item = event.target.closest(".referential-item");
+  if (item) {
+    event.dataTransfer.setData("text/plain", JSON.stringify({
+      type: "item",
+      referentialId: item.dataset.referentialId,
+      categoryId: item.dataset.categoryId,
+      itemId: item.dataset.itemId
+    }));
+    item.classList.add("dragging");
+    return;
+  }
+
+  const category = event.target.closest(".referential-category");
+  if (category) {
+    event.dataTransfer.setData("text/plain", JSON.stringify({
+      type: "category",
+      referentialId: category.dataset.referentialId,
+      categoryId: category.dataset.categoryId
+    }));
+    category.classList.add("dragging");
+  }
+}
+
+function handleReferentialDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add("drop-target");
+}
+
+function handleReferentialDragLeave(event) {
+  event.currentTarget.classList.remove("drop-target");
+}
+
+function handleReferentialDragEnd() {
+  referentialList.querySelectorAll(".dragging, .drop-target").forEach((element) => {
+    element.classList.remove("dragging", "drop-target");
+  });
+}
+
+function handleReferentialDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const payload = parseDragPayload(event.dataTransfer.getData("text/plain"));
+  if (!payload) {
+    return;
+  }
+
+  const targetItem = event.currentTarget.closest(".referential-item");
+  const targetCategory = event.currentTarget.closest(".referential-category");
+  const targetItems = event.currentTarget.closest(".referential-items");
+
+  if (payload.type === "category" && targetCategory) {
+    moveCategoryToCategory(payload.referentialId, payload.categoryId, targetCategory.dataset.categoryId);
+  }
+
+  if (payload.type === "item" && targetItem) {
+    moveItemToPosition(payload, targetItem.dataset.categoryId, targetItem.dataset.itemId);
+  } else if (payload.type === "item" && targetItems) {
+    moveItemToCategoryEnd(payload, targetItems.dataset.categoryId);
+  } else if (payload.type === "item" && targetCategory) {
+    moveItemToCategoryEnd(payload, targetCategory.dataset.categoryId);
+  }
+
+  handleReferentialDragEnd();
+}
+
+function parseDragPayload(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function getProfileHomeItems(home) {
@@ -2113,15 +2186,11 @@ function deleteReferentialItem(referentialId, categoryId, itemId) {
   renderReferentials();
 }
 
-function moveReferentialCategory(referentialId, categoryId, direction) {
+function moveCategoryToCategory(referentialId, categoryId, targetCategoryId) {
   const referential = (state.referentials || []).find((item) => item.id === referentialId);
   const index = referential?.categories.findIndex((item) => item.id === categoryId) ?? -1;
-  if (!referential || index < 0) {
-    return;
-  }
-
-  const targetIndex = direction === "up" ? index - 1 : index + 1;
-  if (targetIndex < 0 || targetIndex >= referential.categories.length) {
+  const targetIndex = referential?.categories.findIndex((item) => item.id === targetCategoryId) ?? -1;
+  if (!referential || index < 0 || targetIndex < 0 || index === targetIndex) {
     return;
   }
 
@@ -2131,23 +2200,48 @@ function moveReferentialCategory(referentialId, categoryId, direction) {
   renderReferentials();
 }
 
-function moveReferentialItem(referentialId, categoryId, itemId, direction) {
-  const referential = (state.referentials || []).find((item) => item.id === referentialId);
-  const category = referential?.categories.find((item) => item.id === categoryId);
-  const index = category?.items.findIndex((item) => item.id === itemId) ?? -1;
-  if (!category || index < 0) {
+function moveItemToPosition(payload, targetCategoryId, targetItemId) {
+  if (payload.categoryId === targetCategoryId && payload.itemId === targetItemId) {
     return;
   }
 
-  const targetIndex = direction === "up" ? index - 1 : index + 1;
-  if (targetIndex < 0 || targetIndex >= category.items.length) {
+  const source = findReferentialItemLocation(payload.referentialId, payload.categoryId, payload.itemId);
+  const referential = (state.referentials || []).find((item) => item.id === payload.referentialId);
+  const targetCategory = referential?.categories.find((item) => item.id === targetCategoryId);
+  if (!source || !targetCategory) {
     return;
   }
 
-  const [item] = category.items.splice(index, 1);
-  category.items.splice(targetIndex, 0, item);
+  const [item] = source.category.items.splice(source.itemIndex, 1);
+  const targetIndex = targetCategory.items.findIndex((candidate) => candidate.id === targetItemId);
+  targetCategory.items.splice(Math.max(targetIndex, 0), 0, item);
   saveState();
   renderReferentials();
+}
+
+function moveItemToCategoryEnd(payload, targetCategoryId) {
+  const source = findReferentialItemLocation(payload.referentialId, payload.categoryId, payload.itemId);
+  const referential = (state.referentials || []).find((item) => item.id === payload.referentialId);
+  const targetCategory = referential?.categories.find((item) => item.id === targetCategoryId);
+  if (!source || !targetCategory) {
+    return;
+  }
+
+  const [item] = source.category.items.splice(source.itemIndex, 1);
+  targetCategory.items.push(item);
+  saveState();
+  renderReferentials();
+}
+
+function findReferentialItemLocation(referentialId, categoryId, itemId) {
+  const referential = (state.referentials || []).find((item) => item.id === referentialId);
+  const category = referential?.categories.find((item) => item.id === categoryId);
+  const itemIndex = category?.items.findIndex((item) => item.id === itemId) ?? -1;
+  if (!referential || !category || itemIndex < 0) {
+    return null;
+  }
+
+  return { referential, category, itemIndex };
 }
 
 function updateLearnerModality(learnerId, modality) {
