@@ -353,6 +353,8 @@ const profileGrid = document.querySelector("#profileGrid");
 const profileHomeGrid = document.querySelector("#profileHomeGrid");
 const referentialItemForm = document.querySelector("#referentialItemForm");
 const referentialProgram = document.querySelector("#referentialProgram");
+const referentialModality = document.querySelector("#referentialModality");
+const referentialCategorySelect = document.querySelector("#referentialCategorySelect");
 const referentialList = document.querySelector("#referentialList");
 const referentialCount = document.querySelector("#referentialCount");
 const learnerList = document.querySelector("#learnerList");
@@ -406,6 +408,8 @@ learnerForm.addEventListener("submit", addLearner);
 trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
 referentialItemForm.addEventListener("submit", addReferentialItem);
+referentialProgram.addEventListener("change", renderReferentialCategoryOptions);
+referentialModality.addEventListener("change", renderReferentialCategoryOptions);
 noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
@@ -856,6 +860,7 @@ function renderReferentials() {
   referentialProgram.innerHTML = programs
     .map((program) => `<option value="${escapeHtml(program)}">${escapeHtml(program)}</option>`)
     .join("");
+  renderReferentialCategoryOptions();
 
   const itemCount = referentials.reduce((sum, referential) => (
     sum + referential.categories.reduce((categorySum, category) => categorySum + category.items.length, 0)
@@ -873,17 +878,25 @@ function renderReferentials() {
           <button class="danger-link" type="button" data-delete-referential="${referential.id}">Supprimer</button>
         </div>
         <div class="referential-categories">
-          ${referential.categories.map((category) => `
+          ${referential.categories.map((category, categoryIndex) => `
             <details class="referential-category" open>
               <summary>
                 <span>${escapeHtml(category.title)}</span>
-                <small>${category.items.length} élément(s)</small>
+                <span class="referential-actions">
+                  <button class="ghost-mini-button" type="button" data-move-category="${referential.id}|${category.id}|up" ${categoryIndex === 0 ? "disabled" : ""}>Monter</button>
+                  <button class="ghost-mini-button" type="button" data-move-category="${referential.id}|${category.id}|down" ${categoryIndex === referential.categories.length - 1 ? "disabled" : ""}>Descendre</button>
+                  <small>${category.items.length} élément(s)</small>
+                </span>
               </summary>
               <div class="referential-items">
-                ${category.items.map((item) => `
+                ${category.items.map((item, itemIndex) => `
                   <div class="referential-item">
                     <span>${escapeHtml(item.text)}</span>
-                    <button class="danger-link" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}">Retirer</button>
+                    <span class="referential-actions">
+                      <button class="ghost-mini-button" type="button" data-move-referential-item="${referential.id}|${category.id}|${item.id}|up" ${itemIndex === 0 ? "disabled" : ""}>Monter</button>
+                      <button class="ghost-mini-button" type="button" data-move-referential-item="${referential.id}|${category.id}|${item.id}|down" ${itemIndex === category.items.length - 1 ? "disabled" : ""}>Descendre</button>
+                      <button class="danger-link" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}">Retirer</button>
+                    </span>
                   </div>
                 `).join("") || `<div class="empty-state">Aucune compétence dans ce sous-menu.</div>`}
               </div>
@@ -904,6 +917,32 @@ function renderReferentials() {
       deleteReferentialItem(referentialId, categoryId, itemId);
     });
   });
+
+  referentialList.querySelectorAll("[data-move-category]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const [referentialId, categoryId, direction] = button.dataset.moveCategory.split("|");
+      moveReferentialCategory(referentialId, categoryId, direction);
+    });
+  });
+
+  referentialList.querySelectorAll("[data-move-referential-item]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const [referentialId, categoryId, itemId, direction] = button.dataset.moveReferentialItem.split("|");
+      moveReferentialItem(referentialId, categoryId, itemId, direction);
+    });
+  });
+}
+
+function renderReferentialCategoryOptions() {
+  const referential = (state.referentials || []).find((item) => (
+    item.program === referentialProgram.value && item.modality === referentialModality.value
+  ));
+  const categories = referential?.categories || [];
+
+  referentialCategorySelect.innerHTML = categories.length
+    ? categories.map((category) => `<option value="${escapeHtml(category.title)}">${escapeHtml(category.title)}</option>`).join("")
+    : `<option value="">Aucun sous-menu existant</option>`;
+  referentialCategorySelect.disabled = !categories.length;
 }
 
 function getProfileHomeItems(home) {
@@ -1442,8 +1481,9 @@ function addTutor(event) {
 function addReferentialItem(event) {
   event.preventDefault();
   const program = referentialProgram.value;
-  const modality = document.querySelector("#referentialModality").value;
-  const categoryTitle = document.querySelector("#referentialCategory").value.trim();
+  const modality = referentialModality.value;
+  const newCategoryTitle = document.querySelector("#referentialCategory").value.trim();
+  const categoryTitle = newCategoryTitle || referentialCategorySelect.value;
   const text = document.querySelector("#referentialItemText").value.trim();
   if (!program || !categoryTitle || !text) {
     return;
@@ -1476,6 +1516,7 @@ function addReferentialItem(event) {
     text
   });
 
+  document.querySelector("#referentialCategory").value = "";
   document.querySelector("#referentialItemText").value = "";
   saveState();
   renderReferentials();
@@ -2068,6 +2109,43 @@ function deleteReferentialItem(referentialId, categoryId, itemId) {
 
   category.items = category.items.filter((item) => item.id !== itemId);
   referential.categories = referential.categories.filter((item) => item.items.length);
+  saveState();
+  renderReferentials();
+}
+
+function moveReferentialCategory(referentialId, categoryId, direction) {
+  const referential = (state.referentials || []).find((item) => item.id === referentialId);
+  const index = referential?.categories.findIndex((item) => item.id === categoryId) ?? -1;
+  if (!referential || index < 0) {
+    return;
+  }
+
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= referential.categories.length) {
+    return;
+  }
+
+  const [category] = referential.categories.splice(index, 1);
+  referential.categories.splice(targetIndex, 0, category);
+  saveState();
+  renderReferentials();
+}
+
+function moveReferentialItem(referentialId, categoryId, itemId, direction) {
+  const referential = (state.referentials || []).find((item) => item.id === referentialId);
+  const category = referential?.categories.find((item) => item.id === categoryId);
+  const index = category?.items.findIndex((item) => item.id === itemId) ?? -1;
+  if (!category || index < 0) {
+    return;
+  }
+
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= category.items.length) {
+    return;
+  }
+
+  const [item] = category.items.splice(index, 1);
+  category.items.splice(targetIndex, 0, item);
   saveState();
   renderReferentials();
 }

@@ -740,17 +740,38 @@ textarea {
 
 .referential-card-top,
 .referential-item,
-.referential-category summary {
+.referential-category summary,
+.referential-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
+.referential-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .referential-card-top span,
 .referential-category small {
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.ghost-mini-button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.ghost-mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .referential-category {
