@@ -900,8 +900,9 @@ function renderReferentials() {
       <article class="referential-card">
         <div class="referential-card-top">
           <div>
+            <small>Référentiel</small>
             <strong>${escapeHtml(referential.program)}</strong>
-            <span>${escapeHtml(referential.modality)} · ${referential.categories.length} sous-menu(s)</span>
+            <span>${escapeHtml(referential.modality)} · ${referential.categories.length} sous-menu(s) · ${escapeHtml(getReferentialDurationLabel(referential))}</span>
           </div>
           <button class="icon-danger-button" type="button" data-delete-referential="${referential.id}" aria-label="Supprimer le référentiel" title="Supprimer"></button>
         </div>
@@ -924,7 +925,7 @@ function renderReferentials() {
                       <div class="referential-item-detail">
                         ${item.generalObjective ? `<small>Objectif général : ${escapeHtml(item.generalObjective)}</small>` : ""}
                         ${item.specificObjective ? `<small>Objectif spécifique : ${escapeHtml(item.specificObjective)}</small>` : ""}
-                        ${item.duration ? `<small>Durée : ${escapeHtml(item.duration)}</small>` : ""}
+                        <small class="${item.duration ? "" : "missing-detail"}">Durée : ${escapeHtml(item.duration || "à renseigner")}</small>
                       </div>
                     </div>
                     <span class="referential-actions">
@@ -952,6 +953,38 @@ function renderReferentials() {
   });
 
   attachReferentialDragHandlers();
+}
+
+function getReferentialDurationLabel(referential) {
+  const durations = referential.categories
+    .flatMap((category) => category.items)
+    .map((item) => item.duration?.trim())
+    .filter(Boolean);
+  if (!durations.length) {
+    return "durée à renseigner";
+  }
+
+  const hours = durations
+    .map(parseDurationHours)
+    .filter((duration) => Number.isFinite(duration));
+  if (hours.length === durations.length) {
+    const total = hours.reduce((sum, duration) => sum + duration, 0);
+    return `durée totale : ${formatHours(total)}`;
+  }
+
+  return durations.length === 1
+    ? `durée : ${durations[0]}`
+    : `${durations.length} durées renseignées`;
+}
+
+function parseDurationHours(duration) {
+  const match = duration.match(/(\d+(?:[,.]\d+)?)/);
+  return match ? Number(match[1].replace(",", ".")) : NaN;
+}
+
+function formatHours(hours) {
+  const value = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(".", ",");
+  return `${value} h`;
 }
 
 function attachReferentialDragHandlers() {
