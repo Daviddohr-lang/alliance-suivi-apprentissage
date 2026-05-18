@@ -559,6 +559,9 @@ function normalizeLearner(learner) {
     lastName,
     name: learner.name || [lastName, firstName].filter(Boolean).join(" "),
     modality,
+    endDate: learner.endDate || "",
+    contractStart: learner.contractStart || "",
+    contractEnd: learner.contractEnd || "",
     accessCode: learner.accessCode || generateAccessCode([lastName, firstName].filter(Boolean).join(" ")),
     messages: learner.messages || [],
     documents: learner.documents || [],
@@ -600,6 +603,7 @@ function normalizeTrainers(trainers) {
     phone: trainer.phone || "",
     email: trainer.email || "",
     learnerIds: Array.isArray(trainer.learnerIds) ? trainer.learnerIds : [],
+    planning: trainer.planning || "",
     notes: trainer.notes || "",
     accessCode: trainer.accessCode || generateProfileCode("FORM", `${trainer.firstName || ""} ${trainer.lastName || trainer.name || ""}`)
   }));
@@ -614,9 +618,31 @@ function normalizeCenter(center) {
       firstName: person.firstName || splitTutorName(person.name).firstName,
       lastName: person.lastName || splitTutorName(person.name).lastName,
       role: person.role || "Salarié du centre",
+      permissions: normalizePermissions(person.permissions || ["administration", "documents", "messages", "center"]),
       accessCode: person.accessCode || generateProfileCode("CTR", `${person.firstName || ""} ${person.lastName || person.name || ""}`)
     }))
   };
+}
+
+function normalizePermissions(permissions) {
+  const allowed = ["learners", "trainers", "tutors", "followup", "administration", "documents", "messages", "center", "referentials"];
+  return (Array.isArray(permissions) ? permissions : [])
+    .filter((permission) => allowed.includes(permission));
+}
+
+function formatPermissionLabels(permissions = []) {
+  const labels = {
+    learners: "Apprenants",
+    trainers: "Formateurs",
+    tutors: "Tuteurs",
+    followup: "Suivi",
+    administration: "Administration",
+    documents: "Documents",
+    messages: "Messages",
+    center: "Centre",
+    referentials: "Référentiels"
+  };
+  return permissions.map((permission) => labels[permission]).filter(Boolean);
 }
 
 function normalizeReferentials(referentials) {
@@ -850,7 +876,18 @@ function getAllowedViews() {
   }
 
   if (currentRole === "staff") {
-    return ["dashboard", "learners", "followup", "administration", "messages", "center"];
+    const person = state.center.staff.find((item) => item.id === currentStaffId);
+    const permissions = person?.permissions || [];
+    const views = ["dashboard"];
+    if (permissions.includes("referentials")) views.push("referentials");
+    if (permissions.includes("learners")) views.push("learners");
+    if (permissions.includes("trainers")) views.push("trainers");
+    if (permissions.includes("tutors")) views.push("tutors");
+    if (permissions.includes("followup")) views.push("followup");
+    if (permissions.includes("administration") || permissions.includes("documents")) views.push("administration");
+    if (permissions.includes("messages")) views.push("messages");
+    if (permissions.includes("center")) views.push("center");
+    return views;
   }
 
   if (currentRole === "trainer") {
@@ -1309,6 +1346,10 @@ function renderTrainers() {
             <div><span>E-mail</span><strong>${escapeHtml(trainer.email || "Non renseigné")}</strong></div>
             <div><span>Stagiaires suivis</span><strong>${learners.length}</strong></div>
           </div>
+          <div class="linked-tutor">
+            <span>Planning</span>
+            <p>${escapeHtml(trainer.planning || "Aucun planning renseigné.")}</p>
+          </div>
           <div class="trainer-learners">
             ${learners.length
               ? learners.map((learner) => `<span>${escapeHtml(learner.name)} · ${escapeHtml(learner.program)}</span>`).join("")
@@ -1389,6 +1430,9 @@ function renderDetail() {
       <div><span>Référent</span><strong>${learner.coach}</strong></div>
       <div><span>Modalité</span><strong>${learner.modality || "Présentiel"}</strong></div>
       <div><span>Entrée</span><strong>${formatDate(learner.startDate)}</strong></div>
+      <div><span>Sortie</span><strong>${learner.endDate ? formatDate(learner.endDate) : "Non renseignée"}</strong></div>
+      <div><span>Début contrat</span><strong>${learner.contractStart ? formatDate(learner.contractStart) : "Non renseigné"}</strong></div>
+      <div><span>Fin contrat</span><strong>${learner.contractEnd ? formatDate(learner.contractEnd) : "Non renseigné"}</strong></div>
       <div><span>Présence</span><strong>${learner.attendance}%</strong></div>
       <div><span>Progression</span><strong>${progressOf(learner)}%</strong></div>
       <div><span>Code espace stagiaire</span><strong>${escapeHtml(learner.accessCode || generateAccessCode(learner.name))}</strong></div>
@@ -1576,7 +1620,17 @@ function renderAdministration() {
 
   administrationGrid.innerHTML = `
     ${administrationCard("Dossier apprentis", `${learners.length} dossier(s)`, `${incomplete} dossier(s) incomplet(s)`)}
-    ${administrationCard("Contrats", "À suivre", "Zone prête pour les contrats et dates clés.")}
+    <article class="administration-card">
+      <h3>Contrats</h3>
+      <div class="admin-list">
+        ${learners.map((learner) => `
+          <div>
+            <strong>${escapeHtml(learner.name)}</strong>
+            <span>${learner.contractStart ? formatDate(learner.contractStart) : "Début non renseigné"} → ${learner.contractEnd ? formatDate(learner.contractEnd) : "Fin non renseignée"}</span>
+          </div>
+        `).join("") || `<div class="empty-state">Aucun contrat.</div>`}
+      </div>
+    </article>
     ${administrationCard("Assiduité", `${lowAttendance} alerte(s)`, "Présences et retards à surveiller.")}
     <article class="administration-card">
       <h3>Progression pédagogique</h3>
@@ -1895,7 +1949,7 @@ function renderCenter() {
       <article class="staff-item">
         <div>
           <strong>${escapeHtml(personFullName(person) || "Salarié sans nom")}</strong>
-          <span>${escapeHtml(person.role || "Salarié du centre")}</span>
+          <span>${escapeHtml(person.role || "Salarié du centre")} · ${formatPermissionLabels(person.permissions).join(", ") || "Aucun accès"}</span>
         </div>
         <strong>${escapeHtml(person.accessCode)}</strong>
       </article>
@@ -1922,6 +1976,9 @@ function addLearner(event) {
   const coach = document.querySelector("#learnerCoach").value.trim();
   const modality = document.querySelector("#learnerModality").value;
   const startDate = document.querySelector("#learnerStart").value;
+  const endDate = document.querySelector("#learnerEnd").value;
+  const contractStart = document.querySelector("#learnerContractStart").value;
+  const contractEnd = document.querySelector("#learnerContractEnd").value;
   const status = document.querySelector("#learnerStatus").value;
   const attendance = Number(document.querySelector("#learnerAttendance").value);
 
@@ -1936,6 +1993,9 @@ function addLearner(event) {
     coach,
     modality,
     startDate,
+    endDate,
+    contractStart,
+    contractEnd,
     status,
     attendance,
     accessCode: existingLearner?.accessCode || generateAccessCode(name),
@@ -1990,6 +2050,9 @@ function editLearner(learnerId) {
   document.querySelector("#learnerCoach").value = learner.coach;
   document.querySelector("#learnerModality").value = learner.modality || "Présentiel";
   document.querySelector("#learnerStart").value = learner.startDate;
+  document.querySelector("#learnerEnd").value = learner.endDate || "";
+  document.querySelector("#learnerContractStart").value = learner.contractStart || "";
+  document.querySelector("#learnerContractEnd").value = learner.contractEnd || "";
   document.querySelector("#learnerStatus").value = learner.status;
   document.querySelector("#learnerAttendance").value = learner.attendance;
   learnerDialog.showModal();
@@ -2012,6 +2075,7 @@ function addTrainer(event) {
     phone: document.querySelector("#trainerPhone").value.trim(),
     email: document.querySelector("#trainerEmail").value.trim(),
     learnerIds,
+    planning: document.querySelector("#trainerPlanning").value.trim(),
     notes: document.querySelector("#trainerNotes").value.trim(),
     accessCode: existingTrainer?.accessCode || generateProfileCode("FORM", `${firstName} ${lastName}`)
   };
@@ -2046,6 +2110,7 @@ function editTrainer(trainerId) {
   document.querySelector("#trainerPhone").value = trainer.phone || "";
   document.querySelector("#trainerEmail").value = trainer.email || "";
   document.querySelector("#trainerType").value = trainer.type || "Interne";
+  document.querySelector("#trainerPlanning").value = trainer.planning || "";
   [...trainerLearners.options].forEach((option) => {
     option.selected = (trainer.learnerIds || []).includes(option.value);
   });
@@ -2778,6 +2843,7 @@ function addCenterStaff(event) {
     firstName,
     lastName,
     role: role || "Salarié du centre",
+    permissions: normalizePermissions([...document.querySelectorAll('input[name="staffPermissions"]:checked')].map((input) => input.value)),
     accessCode: generateProfileCode("CTR", `${firstName} ${lastName}`)
   });
   centerStaffForm.reset();

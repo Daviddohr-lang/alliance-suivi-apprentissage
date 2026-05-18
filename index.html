@@ -365,6 +365,10 @@
                 <select id="trainerLearners" multiple></select>
               </label>
               <label>
+                <span>Planning formateur</span>
+                <textarea id="trainerPlanning" rows="4" placeholder="Ex. Lundi OVP groupe A, mercredi évaluations, visites prévues..."></textarea>
+              </label>
+              <label>
                 <span>Notes pédagogiques</span>
                 <textarea id="trainerNotes" rows="4" placeholder="Observations, modules assurés, préparation examen..."></textarea>
               </label>
@@ -600,6 +604,18 @@
                   <span>Fonction</span>
                   <input id="staffRole" placeholder="Ex. Assistante administrative, Directrice">
                 </label>
+                <fieldset class="checkbox-fieldset">
+                  <legend>Accès autorisés</legend>
+                  <label><input name="staffPermissions" type="checkbox" value="learners"><span>Apprenants</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="trainers"><span>Formateurs</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="tutors"><span>Tuteurs</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="followup"><span>Suivi</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="administration" checked><span>Administration</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="documents" checked><span>Documents</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="messages" checked><span>Messages</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="center" checked><span>Centre</span></label>
+                  <label><input name="staffPermissions" type="checkbox" value="referentials"><span>Référentiels</span></label>
+                </fieldset>
                 <button class="primary-button" type="submit">Créer l'accès salarié</button>
               </form>
               <div class="staff-list" id="centerStaffList"></div>
@@ -677,6 +693,18 @@
           <label>
             <span>Date d'entrée</span>
             <input id="learnerStart" required type="date">
+          </label>
+          <label>
+            <span>Date de sortie</span>
+            <input id="learnerEnd" type="date">
+          </label>
+          <label>
+            <span>Début contrat apprentissage</span>
+            <input id="learnerContractStart" type="date">
+          </label>
+          <label>
+            <span>Fin contrat apprentissage</span>
+            <input id="learnerContractEnd" type="date">
           </label>
           <label>
             <span>Statut</span>
