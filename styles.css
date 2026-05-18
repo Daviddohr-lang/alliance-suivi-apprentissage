@@ -1403,6 +1403,66 @@ textarea {
   align-items: end;
 }
 
+.administration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.administration-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.administration-card-wide {
+  grid-column: span 2;
+}
+
+.administration-card > strong {
+  font-size: 1.6rem;
+}
+
+.admin-list,
+.document-list,
+.staff-list,
+.center-staff-form {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-list div,
+.document-list a,
+.staff-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.admin-list span,
+.document-list span,
+.staff-item span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.document-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
 .center-layout {
   display: grid;
   grid-template-columns: minmax(340px, 0.95fr) minmax(320px, 1.05fr);
@@ -1548,6 +1608,8 @@ dialog::backdrop {
     .content-grid,
     .followup-layout,
     .messages-layout,
+    .administration-grid,
+    .document-form,
     .tutors-layout,
     .trainee-grid,
     .center-layout {
@@ -1556,6 +1618,10 @@ dialog::backdrop {
 
   .detail-panel {
     position: static;
+  }
+
+  .administration-card-wide {
+    grid-column: auto;
   }
 }
 

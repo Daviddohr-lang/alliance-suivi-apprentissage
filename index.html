@@ -29,6 +29,7 @@
             <span>Profil</span>
             <select id="profileLoginRole" required>
               <option value="admin">Admin Alliance</option>
+              <option value="staff">Salarié du centre</option>
               <option value="trainer">Formateur</option>
               <option value="tutor">Tuteur</option>
               <option value="trainee">Stagiaire</option>
@@ -82,6 +83,10 @@
           <button class="nav-item" data-view="followup" type="button">
             <span aria-hidden="true">✓</span>
             Suivi
+          </button>
+          <button class="nav-item" data-view="administration" type="button">
+            <span aria-hidden="true">▣</span>
+            Administration
           </button>
           <button class="nav-item" data-view="messages" type="button">
             <span aria-hidden="true">✉</span>
@@ -349,6 +354,13 @@
                 </label>
               </div>
               <label>
+                <span>Type de formateur</span>
+                <select id="trainerType">
+                  <option>Interne</option>
+                  <option>Externe</option>
+                </select>
+              </label>
+              <label>
                 <span>Stagiaires suivis</span>
                 <select id="trainerLearners" multiple></select>
               </label>
@@ -381,8 +393,8 @@
             <form class="panel tutor-form" id="tutorForm">
               <h3>Ajouter un tuteur</h3>
               <label>
-                <span>Stagiaire concerné</span>
-                <select id="tutorLearner" required></select>
+                <span>Stagiaires concernés</span>
+                <select id="tutorLearner" multiple required></select>
               </label>
               <div class="form-grid compact">
                 <label>
@@ -513,6 +525,17 @@
           </div>
         </section>
 
+        <section class="view" id="administrationView" aria-labelledby="administrationTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="administrationTitle">Administration</h2>
+              <p>Dossiers apprentis, contrats, assiduité, progression, documents et conformité.</p>
+            </div>
+          </div>
+
+          <div class="administration-grid" id="administrationGrid"></div>
+        </section>
+
         <section class="view" id="centerView" aria-labelledby="centerTitle">
           <div class="section-heading">
             <div>
@@ -560,6 +583,27 @@
             </form>
 
             <section class="panel center-preview" id="centerPreview"></section>
+            <section class="panel center-staff-panel">
+              <h3>Profils salariés du centre</h3>
+              <form class="center-staff-form" id="centerStaffForm">
+                <div class="form-grid compact">
+                  <label>
+                    <span>Nom</span>
+                    <input id="staffLastName" placeholder="Ex. Durand">
+                  </label>
+                  <label>
+                    <span>Prénom</span>
+                    <input id="staffFirstName" placeholder="Ex. Sophie">
+                  </label>
+                </div>
+                <label>
+                  <span>Fonction</span>
+                  <input id="staffRole" placeholder="Ex. Assistante administrative, Directrice">
+                </label>
+                <button class="primary-button" type="submit">Créer l'accès salarié</button>
+              </form>
+              <div class="staff-list" id="centerStaffList"></div>
+            </section>
           </div>
         </section>
 

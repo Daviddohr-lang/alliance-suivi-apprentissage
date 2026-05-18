@@ -10,7 +10,8 @@ const defaultCenter = {
   email: "",
   adminReferent: "",
   pedagogicalReferent: "",
-  logo: ""
+  logo: "",
+  staff: []
 };
 
 const programTemplates = {
@@ -192,6 +193,7 @@ const defaultTutors = [
   {
     id: crypto.randomUUID(),
     learnerId: defaultLearners[0].id,
+    learnerIds: [defaultLearners[0].id],
     firstName: "Jean",
     lastName: "Dupont",
     position: "Tuteur entreprise",
@@ -347,6 +349,7 @@ let editingTutorId = null;
 let currentTraineeId = null;
 let currentTrainerId = null;
 let currentTutorId = null;
+let currentStaffId = null;
 let currentRole = null;
 let realtimeSyncTimer = null;
 
@@ -359,6 +362,7 @@ const views = {
   tutors: document.querySelector("#tutorsView"),
   followup: document.querySelector("#followupView"),
   messages: document.querySelector("#messagesView"),
+  administration: document.querySelector("#administrationView"),
   trainee: document.querySelector("#traineeView"),
   center: document.querySelector("#centerView")
 };
@@ -407,12 +411,15 @@ const chatHeading = document.querySelector("#chatHeading");
 const chatThread = document.querySelector("#chatThread");
 const messageForm = document.querySelector("#messageForm");
 const messageRecipient = document.querySelector("#messageRecipient");
+const administrationGrid = document.querySelector("#administrationGrid");
 const traineeLoginForm = document.querySelector("#traineeLoginForm");
 const traineeSpace = document.querySelector("#traineeSpace");
 const traineeLogoutButton = document.querySelector("#traineeLogoutButton");
 const centerForm = document.querySelector("#centerForm");
 const centerPreview = document.querySelector("#centerPreview");
 const centerLogoInput = document.querySelector("#centerLogoInput");
+const centerStaffForm = document.querySelector("#centerStaffForm");
+const centerStaffList = document.querySelector("#centerStaffList");
 const authScreen = document.querySelector("#authScreen");
 const appShell = document.querySelector("#appShell");
 const profileLoginForm = document.querySelector("#profileLoginForm");
@@ -451,6 +458,7 @@ traineeLogoutButton.addEventListener("click", logoutTrainee);
 profileLoginForm.addEventListener("submit", loginProfileSession);
 centerForm.addEventListener("submit", saveCenter);
 centerLogoInput.addEventListener("change", updateCenterLogo);
+centerStaffForm.addEventListener("submit", addCenterStaff);
 
 initializeApp();
 
@@ -481,7 +489,7 @@ function loadState() {
       tutors: normalizeTutors(parsed.tutors || []),
       referentials: normalizeReferentials(parsed.referentials || defaultReferentials),
       libraryItems: normalizeLibraryItems(parsed.libraryItems || defaultLibraryItems),
-      center: { ...defaultCenter, ...(parsed.center || {}) }
+      center: normalizeCenter(parsed.center || defaultCenter)
     };
   } catch {
     return createDefaultState();
@@ -508,6 +516,12 @@ function restoreSession() {
 
     if (session.role === "admin") {
       currentRole = "admin";
+      return;
+    }
+
+    if (session.role === "staff" && state.center.staff.some((person) => person.id === session.staffId)) {
+      currentRole = "staff";
+      currentStaffId = session.staffId;
       return;
     }
 
@@ -547,6 +561,7 @@ function normalizeLearner(learner) {
     modality,
     accessCode: learner.accessCode || generateAccessCode([lastName, firstName].filter(Boolean).join(" ")),
     messages: learner.messages || [],
+    documents: learner.documents || [],
     modules: (learner.modules || []).map((module) => {
       if (shouldMarkDistance && module.name.startsWith("Vidéoprotection :")) {
         return { ...module, name: `Distanciel : ${module.name}` };
@@ -561,6 +576,7 @@ function normalizeTutors(tutors) {
   return tutors.map((tutor) => ({
     id: tutor.id || crypto.randomUUID(),
     learnerId: tutor.learnerId || "",
+    learnerIds: Array.isArray(tutor.learnerIds) ? tutor.learnerIds : (tutor.learnerId ? [tutor.learnerId] : []),
     firstName: tutor.firstName || splitTutorName(tutor.name).firstName,
     lastName: tutor.lastName || splitTutorName(tutor.name).lastName,
     position: tutor.position || "",
@@ -580,12 +596,27 @@ function normalizeTrainers(trainers) {
     firstName: trainer.firstName || splitTutorName(trainer.name).firstName,
     lastName: trainer.lastName || splitTutorName(trainer.name).lastName,
     specialties: normalizeSpecialties(trainer.specialties || trainer.specialty || ""),
+    type: trainer.type || "Interne",
     phone: trainer.phone || "",
     email: trainer.email || "",
     learnerIds: Array.isArray(trainer.learnerIds) ? trainer.learnerIds : [],
     notes: trainer.notes || "",
     accessCode: trainer.accessCode || generateProfileCode("FORM", `${trainer.firstName || ""} ${trainer.lastName || trainer.name || ""}`)
   }));
+}
+
+function normalizeCenter(center) {
+  return {
+    ...defaultCenter,
+    ...(center || {}),
+    staff: (center?.staff || []).map((person) => ({
+      id: person.id || crypto.randomUUID(),
+      firstName: person.firstName || splitTutorName(person.name).firstName,
+      lastName: person.lastName || splitTutorName(person.name).lastName,
+      role: person.role || "Salarié du centre",
+      accessCode: person.accessCode || generateProfileCode("CTR", `${person.firstName || ""} ${person.lastName || person.name || ""}`)
+    }))
+  };
 }
 
 function normalizeReferentials(referentials) {
@@ -645,7 +676,7 @@ async function loadServerState() {
       tutors: normalizeTutors(serverState.tutors || []),
       referentials: normalizeReferentials(serverState.referentials || defaultReferentials),
       libraryItems: normalizeLibraryItems(serverState.libraryItems || defaultLibraryItems),
-      center: { ...defaultCenter, ...(serverState.center || {}) }
+      center: normalizeCenter(serverState.center || defaultCenter)
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
@@ -772,6 +803,7 @@ function render() {
   renderTrainers();
   renderTutors();
   renderFollowup();
+  renderAdministration();
   renderMessages();
   renderTraineeSpace();
   renderCenter();
@@ -809,11 +841,16 @@ function updateNavigationAccess() {
   trainerForm.hidden = currentRole !== "admin";
   tutorForm.hidden = currentRole !== "admin";
   centerForm.hidden = currentRole !== "admin";
+  centerStaffForm.hidden = currentRole !== "admin";
 }
 
 function getAllowedViews() {
   if (currentRole === "admin") {
-    return ["dashboard", "profiles", "referentials", "learners", "trainers", "tutors", "followup", "messages", "trainee", "center"];
+    return ["dashboard", "profiles", "referentials", "learners", "trainers", "tutors", "followup", "administration", "messages", "trainee", "center"];
+  }
+
+  if (currentRole === "staff") {
+    return ["dashboard", "learners", "followup", "administration", "messages", "center"];
   }
 
   if (currentRole === "trainer") {
@@ -848,7 +885,7 @@ function getVisibleLearners() {
 
   if (currentRole === "tutor" && currentTutorId) {
     const tutor = state.tutors.find((item) => item.id === currentTutorId);
-    return state.learners.filter((learner) => learner.id === tutor?.learnerId);
+    return state.learners.filter((learner) => (tutor?.learnerIds || []).includes(learner.id));
   }
 
   if (currentRole === "trainee" && currentTraineeId) {
@@ -1216,9 +1253,9 @@ function getAllianceHomeMetrics() {
   const tutors = state.tutors || [];
   const activeLearners = learners.filter((learner) => learner.status === "Actif").length;
   const attendanceAlerts = learners.filter((learner) => Number(learner.attendance) < 70 || learner.status === "À risque").length;
-  const incompleteFiles = learners.filter((learner) => !learner.program || !learner.coach || !learner.startDate || !tutors.some((tutor) => tutor.learnerId === learner.id)).length;
+  const incompleteFiles = learners.filter((learner) => !learner.program || !learner.coach || !learner.startDate || !tutors.some((tutor) => (tutor.learnerIds || []).includes(learner.id))).length;
   const companyAlerts = tutors.filter((tutor) => /alerte|difficult|absence|retard|incident/i.test(`${tutor.notes || ""} ${(tutor.messages || []).map((message) => message.text).join(" ")}`)).length;
-  const tutorVisitsToPlan = learners.filter((learner) => !tutors.some((tutor) => tutor.learnerId === learner.id)).length;
+  const tutorVisitsToPlan = learners.filter((learner) => !tutors.some((tutor) => (tutor.learnerIds || []).includes(learner.id))).length;
 
   return [
     ["Apprentis actifs", activeLearners],
@@ -1251,7 +1288,7 @@ function renderTrainers() {
           <div class="trainer-card-top">
             <div>
               <strong>${escapeHtml(personFullName(trainer) || "Formateur sans nom")}</strong>
-              <span>${trainer.specialties?.length ? `${trainer.specialties.length} spécialité(s)` : "Spécialité non renseignée"}</span>
+              <span>${escapeHtml(trainer.type || "Interne")} · ${trainer.specialties?.length ? `${trainer.specialties.length} spécialité(s)` : "Spécialité non renseignée"}</span>
             </div>
             ${currentRole === "admin" ? `
               <span class="card-actions">
@@ -1267,6 +1304,7 @@ function renderTrainers() {
           </div>
           <div class="trainer-info-grid">
             <div><span>Code accès formateur</span><strong>${escapeHtml(trainer.accessCode)}</strong></div>
+            <div><span>Type</span><strong>${escapeHtml(trainer.type || "Interne")}</strong></div>
             <div><span>Téléphone</span><strong>${escapeHtml(trainer.phone || "Non renseigné")}</strong></div>
             <div><span>E-mail</span><strong>${escapeHtml(trainer.email || "Non renseigné")}</strong></div>
             <div><span>Stagiaires suivis</span><strong>${learners.length}</strong></div>
@@ -1333,7 +1371,7 @@ function renderLearners() {
 function renderDetail() {
   const learner = state.learners.find((item) => item.id === selectedLearnerId);
   const template = getProgramTemplate(learner?.program || "", learner?.modality || "Présentiel");
-  const tutor = state.tutors?.find((item) => item.learnerId === learner?.id);
+  const tutor = state.tutors?.find((item) => (item.learnerIds || []).includes(learner?.id));
   if (!learner) {
     detailPanel.innerHTML = `<div class="empty-state">Sélectionnez une fiche pour voir le détail.</div>`;
     return;
@@ -1437,7 +1475,9 @@ function renderTutors() {
 
   tutorList.innerHTML = tutors.length
     ? tutors.map((tutor) => {
-      const learner = state.learners.find((item) => item.id === tutor.learnerId);
+      const linkedLearners = (tutor.learnerIds || [])
+        .map((id) => state.learners.find((learner) => learner.id === id))
+        .filter(Boolean);
       const messages = tutor.messages || [];
       return `
         <article class="tutor-card">
@@ -1454,11 +1494,16 @@ function renderTutors() {
             ` : ""}
           </div>
           <div class="tutor-info-grid">
-            <div><span>Stagiaire</span><strong>${escapeHtml(learner?.name || "Non rattaché")}</strong></div>
-            <div><span>Diplôme suivi</span><strong>${escapeHtml(tutor.diploma || learner?.program || "Non renseigné")}</strong></div>
+            <div><span>Stagiaires</span><strong>${linkedLearners.length}</strong></div>
+            <div><span>Diplôme suivi</span><strong>${escapeHtml(tutor.diploma || linkedLearners[0]?.program || "Non renseigné")}</strong></div>
             <div><span>Code accès tuteur</span><strong>${escapeHtml(tutor.accessCode || "Non renseigné")}</strong></div>
             <div><span>Téléphone</span><strong>${escapeHtml(tutor.phone || "Non renseigné")}</strong></div>
             <div><span>E-mail</span><strong>${escapeHtml(tutor.email || "Non renseigné")}</strong></div>
+          </div>
+          <div class="trainer-learners">
+            ${linkedLearners.length
+              ? linkedLearners.map((learner) => `<span>${escapeHtml(learner.name)} · ${escapeHtml(learner.program)}</span>`).join("")
+              : `<span>Aucun stagiaire rattaché</span>`}
           </div>
           <p>${escapeHtml(tutor.notes || "Aucune note de suivi.")}</p>
           <div class="tutor-message-thread">
@@ -1516,6 +1561,75 @@ function renderFollowup() {
   timeline.innerHTML = notes.length
     ? notes.map((note) => noteTemplate(note, true)).join("")
     : `<div class="empty-state">Le journal de suivi est vide.</div>`;
+}
+
+function renderAdministration() {
+  const learners = getVisibleLearners();
+  const activeLearners = learners.filter((learner) => learner.status === "Actif").length;
+  const incomplete = learners.filter((learner) => !learner.program || !learner.coach || !learner.startDate).length;
+  const lowAttendance = learners.filter((learner) => Number(learner.attendance) < 70 || learner.status === "À risque").length;
+  const documents = learners.flatMap((learner) => (learner.documents || []).map((document) => ({ ...document, learnerName: learner.name })));
+  const pedagogicalProgress = learners.map((learner) => ({
+    learner,
+    progress: progressOf(learner)
+  }));
+
+  administrationGrid.innerHTML = `
+    ${administrationCard("Dossier apprentis", `${learners.length} dossier(s)`, `${incomplete} dossier(s) incomplet(s)`)}
+    ${administrationCard("Contrats", "À suivre", "Zone prête pour les contrats et dates clés.")}
+    ${administrationCard("Assiduité", `${lowAttendance} alerte(s)`, "Présences et retards à surveiller.")}
+    <article class="administration-card">
+      <h3>Progression pédagogique</h3>
+      <div class="admin-list">
+        ${pedagogicalProgress.map(({ learner, progress }) => `
+          <div><strong>${escapeHtml(learner.name)}</strong><span>${progress}% validé · ${escapeHtml(learner.program)}</span></div>
+        `).join("") || `<div class="empty-state">Aucun apprenant.</div>`}
+      </div>
+    </article>
+    <article class="administration-card administration-card-wide">
+      <h3>Documents</h3>
+      <form class="document-form" id="documentForm">
+        <label>
+          <span>Apprenant</span>
+          <select id="documentLearner">
+            ${learners.map((learner) => `<option value="${learner.id}">${escapeHtml(learner.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Document</span>
+          <input id="documentFile" type="file">
+        </label>
+        <button class="primary-button" type="submit" ${learners.length ? "" : "disabled"}>Ajouter le document</button>
+      </form>
+      <div class="document-list">
+        ${documents.map((document) => `
+          <a href="${document.dataUrl}" download="${escapeHtml(document.name)}">
+            <strong>${escapeHtml(document.name)}</strong>
+            <span>${escapeHtml(document.learnerName)} · ${formatDateTime(document.date)}</span>
+          </a>
+        `).join("") || `<div class="empty-state">Aucun document déposé.</div>`}
+      </div>
+    </article>
+    ${administrationCard("Alertes", `${lowAttendance} alerte(s)`, "Alertes assiduité, entreprise et pédagogie.")}
+    ${administrationCard("Examens", "À planifier", "Suivi des examens à venir.")}
+    ${administrationCard("Statistiques", `${activeLearners} actif(s)`, "Indicateurs centre et formations.")}
+    ${administrationCard("Conformité Qualiopi / OPCO", "À suivre", "Pièces et contrôles de conformité.")}
+  `;
+
+  const documentForm = document.querySelector("#documentForm");
+  if (documentForm) {
+    documentForm.addEventListener("submit", addDocument);
+  }
+}
+
+function administrationCard(title, value, detail) {
+  return `
+    <article class="administration-card">
+      <h3>${escapeHtml(title)}</h3>
+      <strong>${escapeHtml(value)}</strong>
+      <p>${escapeHtml(detail)}</p>
+    </article>
+  `;
 }
 
 function renderMessages() {
@@ -1647,6 +1761,11 @@ function getCurrentActorLabel(learner) {
     return `Apprenant - ${learner?.name || "Non renseigné"}`;
   }
 
+  if (currentRole === "staff") {
+    const person = state.center.staff.find((item) => item.id === currentStaffId);
+    return `Centre - ${person ? personFullName(person) : "Salarié"}`;
+  }
+
   return "Administratif Alliance";
 }
 
@@ -1655,7 +1774,7 @@ function getLearnerTrainers(learnerId) {
 }
 
 function getLearnerTutors(learnerId) {
-  return (state.tutors || []).filter((tutor) => tutor.learnerId === learnerId);
+  return (state.tutors || []).filter((tutor) => (tutor.learnerIds || []).includes(learnerId));
 }
 
 function renderTraineeSpace() {
@@ -1716,10 +1835,29 @@ function renderTraineeSpace() {
           <button class="primary-button" type="submit">Envoyer</button>
         </form>
       </section>
+      <section>
+        <h3>Mes documents</h3>
+        <div class="document-list">
+          ${(learner.documents || []).map((document) => `
+            <a href="${document.dataUrl}" download="${escapeHtml(document.name)}">
+              <strong>${escapeHtml(document.name)}</strong>
+              <span>${formatDateTime(document.date)}</span>
+            </a>
+          `).join("") || `<div class="empty-state">Aucun document déposé.</div>`}
+        </div>
+        <form class="trainee-message-form" id="traineeDocumentForm">
+          <label>
+            <span>Ajouter un document</span>
+            <input id="traineeDocumentFile" type="file">
+          </label>
+          <button class="primary-button" type="submit">Déposer</button>
+        </form>
+      </section>
     </div>
   `;
 
   document.querySelector("#traineeMessageForm").addEventListener("submit", sendTraineeMessage);
+  document.querySelector("#traineeDocumentForm").addEventListener("submit", addTraineeDocument);
 }
 
 function renderCenter() {
@@ -1751,6 +1889,18 @@ function renderCenter() {
       </div>
     </div>
   `;
+
+  centerStaffList.innerHTML = (center.staff || []).length
+    ? center.staff.map((person) => `
+      <article class="staff-item">
+        <div>
+          <strong>${escapeHtml(personFullName(person) || "Salarié sans nom")}</strong>
+          <span>${escapeHtml(person.role || "Salarié du centre")}</span>
+        </div>
+        <strong>${escapeHtml(person.accessCode)}</strong>
+      </article>
+    `).join("")
+    : `<div class="empty-state">Aucun accès salarié créé.</div>`;
 }
 
 function noteTemplate(note, showLearner = false) {
@@ -1793,7 +1943,8 @@ function addLearner(event) {
       ? existingLearner.modules
       : modulesForProgram(program, modality),
     notes: existingLearner?.notes || [],
-    messages: existingLearner?.messages || []
+    messages: existingLearner?.messages || [],
+    documents: existingLearner?.documents || []
   };
 
   if (existingLearner) {
@@ -1857,6 +2008,7 @@ function addTrainer(event) {
     firstName,
     lastName,
     specialties: [...document.querySelectorAll('input[name="trainerSpecialties"]:checked')].map((input) => input.value),
+    type: document.querySelector("#trainerType").value,
     phone: document.querySelector("#trainerPhone").value.trim(),
     email: document.querySelector("#trainerEmail").value.trim(),
     learnerIds,
@@ -1893,6 +2045,7 @@ function editTrainer(trainerId) {
   });
   document.querySelector("#trainerPhone").value = trainer.phone || "";
   document.querySelector("#trainerEmail").value = trainer.email || "";
+  document.querySelector("#trainerType").value = trainer.type || "Interne";
   [...trainerLearners.options].forEach((option) => {
     option.selected = (trainer.learnerIds || []).includes(option.value);
   });
@@ -1909,17 +2062,18 @@ function resetTrainerForm() {
 
 function addTutor(event) {
   event.preventDefault();
-  const learnerId = tutorLearner.value;
-  const learner = state.learners.find((item) => item.id === learnerId);
+  const learnerIds = [...tutorLearner.selectedOptions].map((option) => option.value).filter(Boolean);
+  const learner = state.learners.find((item) => item.id === learnerIds[0]);
   const existingTutor = state.tutors.find((item) => item.id === editingTutorId);
-  if (!learnerId) {
+  if (!learnerIds.length) {
     return;
   }
 
   const tutor = {
     ...(existingTutor || {}),
     id: existingTutor?.id || crypto.randomUUID(),
-    learnerId,
+    learnerId: learnerIds[0],
+    learnerIds,
     firstName: document.querySelector("#tutorFirstName").value.trim(),
     lastName: document.querySelector("#tutorLastName").value.trim(),
     position: document.querySelector("#tutorPosition").value.trim(),
@@ -1939,7 +2093,7 @@ function addTutor(event) {
     state.tutors.unshift(tutor);
   }
 
-  selectedLearnerId = learnerId;
+  selectedLearnerId = learnerIds[0];
   saveState();
   resetTutorForm();
   setView("tutors");
@@ -1955,7 +2109,9 @@ function editTutor(tutorId) {
   editingTutorId = tutorId;
   tutorForm.querySelector("h3").textContent = "Modifier le tuteur";
   tutorForm.querySelector("button[type='submit']").textContent = "Enregistrer les modifications";
-  tutorLearner.value = tutor.learnerId || "";
+  [...tutorLearner.options].forEach((option) => {
+    option.selected = (tutor.learnerIds || []).includes(option.value);
+  });
   document.querySelector("#tutorLastName").value = tutor.lastName || "";
   document.querySelector("#tutorFirstName").value = tutor.firstName || "";
   document.querySelector("#tutorPosition").value = tutor.position || "";
@@ -2163,6 +2319,31 @@ function addNote(event) {
   render();
 }
 
+function addDocument(event) {
+  event.preventDefault();
+  const learner = state.learners.find((item) => item.id === document.querySelector("#documentLearner").value);
+  const file = document.querySelector("#documentFile").files?.[0];
+  if (!learner || !file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    learner.documents = learner.documents || [];
+    learner.documents.unshift({
+      id: crypto.randomUUID(),
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      size: file.size,
+      date: new Date().toISOString(),
+      dataUrl: reader.result
+    });
+    saveState();
+    renderAdministration();
+  });
+  reader.readAsDataURL(file);
+}
+
 function addMessage(event) {
   event.preventDefault();
   const learner = state.learners.find((item) => item.id === selectedMessageLearnerId);
@@ -2221,6 +2402,13 @@ function findAccessByCode(code, preferredRole = "") {
     }
   }
 
+  if (!preferredRole || preferredRole === "staff") {
+    const person = (state.center?.staff || []).find((item) => normalizeAccessCode(item.accessCode) === code);
+    if (person) {
+      return { role: "staff", staffId: person.id };
+    }
+  }
+
   if (!preferredRole || preferredRole === "tutor") {
     const tutor = (state.tutors || []).find((item) => normalizeAccessCode(item.accessCode) === code);
     if (tutor) {
@@ -2244,7 +2432,19 @@ function applyLoginAccess(access, helper) {
     currentTraineeId = null;
     currentTrainerId = null;
     currentTutorId = null;
+    currentStaffId = null;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "admin" }));
+    completeProfileLogin("dashboard", helper);
+    return;
+  }
+
+  if (access.role === "staff") {
+    currentRole = "staff";
+    currentStaffId = access.staffId;
+    currentTraineeId = null;
+    currentTrainerId = null;
+    currentTutorId = null;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "staff", staffId: access.staffId }));
     completeProfileLogin("dashboard", helper);
     return;
   }
@@ -2254,6 +2454,7 @@ function applyLoginAccess(access, helper) {
     currentTrainerId = access.trainerId;
     currentTraineeId = null;
     currentTutorId = null;
+    currentStaffId = null;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainer", trainerId: access.trainerId }));
     completeProfileLogin("dashboard", helper);
     return;
@@ -2264,6 +2465,7 @@ function applyLoginAccess(access, helper) {
     currentTutorId = access.tutorId;
     currentTraineeId = null;
     currentTrainerId = null;
+    currentStaffId = null;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "tutor", tutorId: access.tutorId }));
     completeProfileLogin("dashboard", helper);
     return;
@@ -2273,6 +2475,7 @@ function applyLoginAccess(access, helper) {
   currentTraineeId = access.learnerId;
   currentTrainerId = null;
   currentTutorId = null;
+  currentStaffId = null;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role: "trainee", learnerId: access.learnerId }));
   completeProfileLogin("trainee", helper);
 }
@@ -2289,6 +2492,7 @@ function logoutSession() {
   currentTraineeId = null;
   currentTrainerId = null;
   currentTutorId = null;
+  currentStaffId = null;
   sessionStorage.removeItem(SESSION_KEY);
   document.body.classList.remove("trainee-mode");
   render();
@@ -2350,6 +2554,32 @@ function sendTraineeMessage(event) {
   saveState();
   renderMessages();
   renderTraineeSpace();
+}
+
+function addTraineeDocument(event) {
+  event.preventDefault();
+  const learner = state.learners.find((item) => item.id === currentTraineeId);
+  const file = document.querySelector("#traineeDocumentFile").files?.[0];
+  if (!learner || !file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    learner.documents = learner.documents || [];
+    learner.documents.unshift({
+      id: crypto.randomUUID(),
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      size: file.size,
+      date: new Date().toISOString(),
+      dataUrl: reader.result
+    });
+    saveState();
+    renderTraineeSpace();
+    renderAdministration();
+  });
+  reader.readAsDataURL(file);
 }
 
 async function addChristopheReply(learner, messageText) {
@@ -2533,6 +2763,28 @@ function saveCenter(event) {
   render();
 }
 
+function addCenterStaff(event) {
+  event.preventDefault();
+  const firstName = document.querySelector("#staffFirstName").value.trim();
+  const lastName = document.querySelector("#staffLastName").value.trim();
+  const role = document.querySelector("#staffRole").value.trim();
+  if (!firstName || !lastName) {
+    return;
+  }
+
+  state.center = normalizeCenter(state.center || defaultCenter);
+  state.center.staff.unshift({
+    id: crypto.randomUUID(),
+    firstName,
+    lastName,
+    role: role || "Salarié du centre",
+    accessCode: generateProfileCode("CTR", `${firstName} ${lastName}`)
+  });
+  centerStaffForm.reset();
+  saveState();
+  renderCenter();
+}
+
 function updateCenterLogo(event) {
   const file = event.target.files[0];
   if (!file) {
@@ -2554,7 +2806,7 @@ function updateCenterLogo(event) {
 function exportCsv() {
   const headers = ["Nom", "Formation", "Modalité", "Référent", "Nom tuteur", "Prénom tuteur", "Poste tuteur", "Entreprise tuteur", "Diplôme suivi", "Téléphone tuteur", "E-mail tuteur", "Date entrée", "Statut", "Présence", "Progression"];
   const rows = state.learners.map((learner) => {
-    const tutor = state.tutors?.find((item) => item.learnerId === learner.id);
+    const tutor = state.tutors?.find((item) => (item.learnerIds || []).includes(learner.id));
     return [
       learner.name,
       learner.program,
@@ -2627,7 +2879,7 @@ function importBackup(event) {
         tutors: normalizeTutors(importedState.tutors || []),
         referentials: normalizeReferentials(importedState.referentials || defaultReferentials),
         libraryItems: normalizeLibraryItems(importedState.libraryItems || defaultLibraryItems),
-        center: { ...defaultCenter, ...(importedState.center || {}) }
+        center: normalizeCenter(importedState.center || defaultCenter)
       };
       selectedLearnerId = state.learners[0]?.id || null;
       selectedMessageLearnerId = state.learners[0]?.id || null;
@@ -2669,7 +2921,11 @@ function deleteLearner(learnerId) {
     ...trainer,
     learnerIds: trainer.learnerIds.filter((id) => id !== learnerId)
   }));
-  state.tutors = (state.tutors || []).filter((item) => item.learnerId !== learnerId);
+  state.tutors = (state.tutors || []).map((tutor) => ({
+    ...tutor,
+    learnerIds: (tutor.learnerIds || []).filter((id) => id !== learnerId),
+    learnerId: tutor.learnerId === learnerId ? "" : tutor.learnerId
+  }));
   selectedLearnerId = state.learners[0]?.id || null;
   saveState();
   render();
