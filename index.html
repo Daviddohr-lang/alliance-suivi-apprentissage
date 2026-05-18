@@ -179,9 +179,16 @@
           </div>
 
           <div class="referentials-layout">
-            <div class="referential-tools">
-              <form class="panel referential-form" id="referentialLibraryForm">
-                <h3>Base de données référentiel</h3>
+            <section class="panel referential-toolbox">
+              <div class="panel-heading">
+                <h3>Construire le référentiel</h3>
+              </div>
+
+              <form class="referential-form" id="referentialLibraryForm">
+                <div class="toolbox-section-heading">
+                  <strong>Base de données</strong>
+                  <span>Rechercher ou créer un élément réutilisable.</span>
+                </div>
                 <label>
                   <span>Rechercher un élément</span>
                   <input id="referentialLibrarySearch" type="search" placeholder="Ex. code pénal, incendie, communication...">
@@ -208,8 +215,11 @@
                 <button class="primary-button" type="submit">Enregistrer dans la base</button>
               </form>
 
-              <form class="panel referential-form" id="referentialItemForm">
-                <h3>Ajouter une compétence</h3>
+              <form class="referential-form referential-target-form" id="referentialItemForm">
+                <div class="toolbox-section-heading">
+                  <strong>Référentiel de formation</strong>
+                  <span>Ajouter l'élément dans une formation, un module et une modalité.</span>
+                </div>
                 <label>
                   <span>Formation</span>
                   <select id="referentialProgram" required></select>
@@ -239,7 +249,7 @@
                 </label>
                 <button class="primary-button" type="submit">Ajouter au référentiel</button>
               </form>
-            </div>
+            </section>
 
             <section class="panel">
               <div class="panel-heading">

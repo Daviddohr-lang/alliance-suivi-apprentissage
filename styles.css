@@ -730,10 +730,30 @@ textarea {
 .referential-list,
 .referential-categories,
 .referential-items,
-.referential-tools,
 .library-list {
   display: grid;
   gap: 10px;
+}
+
+.referential-toolbox,
+.referential-form {
+  display: grid;
+  gap: 14px;
+}
+
+.referential-target-form {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.toolbox-section-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.toolbox-section-heading span {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .library-summary {
