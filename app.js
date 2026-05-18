@@ -346,6 +346,9 @@ let editingReferentialItem = null;
 let editingLearnerId = null;
 let editingTrainerId = null;
 let editingTutorId = null;
+let selectedPlanningDates = [];
+let selectedPlanningLearnerId = state.learners[0]?.id || null;
+let selectedPlanningYear = new Date().getFullYear();
 let currentTraineeId = null;
 let currentTrainerId = null;
 let currentTutorId = null;
@@ -562,9 +565,11 @@ function normalizeLearner(learner) {
     endDate: learner.endDate || "",
     contractStart: learner.contractStart || "",
     contractEnd: learner.contractEnd || "",
+    contractHours: Number(learner.contractHours) || 0,
     accessCode: learner.accessCode || generateAccessCode([lastName, firstName].filter(Boolean).join(" ")),
     messages: learner.messages || [],
     documents: learner.documents || [],
+    trainingPlan: normalizeTrainingPlan(learner.trainingPlan || []),
     modules: (learner.modules || []).map((module) => {
       if (shouldMarkDistance && module.name.startsWith("Vidéoprotection :")) {
         return { ...module, name: `Distanciel : ${module.name}` };
@@ -622,6 +627,19 @@ function normalizeCenter(center) {
       accessCode: person.accessCode || generateProfileCode("CTR", `${person.firstName || ""} ${person.lastName || person.name || ""}`)
     }))
   };
+}
+
+function normalizeTrainingPlan(items) {
+  return (Array.isArray(items) ? items : []).map((item) => ({
+    id: item.id || crypto.randomUUID(),
+    dates: Array.isArray(item.dates) ? item.dates : [],
+    module: item.module || "Module non renseigné",
+    trainerId: item.trainerId || "",
+    trainerName: item.trainerName || "",
+    hoursPerDay: Number(item.hoursPerDay) || 0,
+    totalHours: Number(item.totalHours) || 0,
+    createdAt: item.createdAt || new Date().toISOString()
+  }));
 }
 
 function normalizePermissions(permissions) {
@@ -1320,6 +1338,7 @@ function renderTrainers() {
       const learners = trainer.learnerIds
         .map((id) => state.learners.find((learner) => learner.id === id))
         .filter(Boolean);
+      const planningEntries = getTrainerPlanningEntries(trainer.id);
       return `
         <article class="trainer-card">
           <div class="trainer-card-top">
@@ -1349,6 +1368,12 @@ function renderTrainers() {
           <div class="linked-tutor">
             <span>Planning</span>
             <p>${escapeHtml(trainer.planning || "Aucun planning renseigné.")}</p>
+          </div>
+          <div class="linked-tutor">
+            <span>Planning formation</span>
+            ${planningEntries.length
+              ? `<div class="planning-list compact">${planningEntries.slice(0, 5).map(planningEntryTemplate).join("")}</div>`
+              : `<p>Aucune séance planifiée depuis le calendrier annuel.</p>`}
           </div>
           <div class="trainer-learners">
             ${learners.length
@@ -1418,6 +1443,7 @@ function renderDetail() {
     return;
   }
 
+  const plannedHours = getLearnerPlannedHours(learner);
   detailPanel.innerHTML = `
     <div class="detail-title">
       <div>
@@ -1433,6 +1459,8 @@ function renderDetail() {
       <div><span>Sortie</span><strong>${learner.endDate ? formatDate(learner.endDate) : "Non renseignée"}</strong></div>
       <div><span>Début contrat</span><strong>${learner.contractStart ? formatDate(learner.contractStart) : "Non renseigné"}</strong></div>
       <div><span>Fin contrat</span><strong>${learner.contractEnd ? formatDate(learner.contractEnd) : "Non renseigné"}</strong></div>
+      <div><span>Durée contrat</span><strong>${learner.contractHours ? formatHours(learner.contractHours) : "Non renseignée"}</strong></div>
+      <div><span>Heures planifiées</span><strong>${formatHours(plannedHours)}</strong></div>
       <div><span>Présence</span><strong>${learner.attendance}%</strong></div>
       <div><span>Progression</span><strong>${progressOf(learner)}%</strong></div>
       <div><span>Code espace stagiaire</span><strong>${escapeHtml(learner.accessCode || generateAccessCode(learner.name))}</strong></div>
@@ -1613,6 +1641,12 @@ function renderAdministration() {
   const incomplete = learners.filter((learner) => !learner.program || !learner.coach || !learner.startDate).length;
   const lowAttendance = learners.filter((learner) => Number(learner.attendance) < 70 || learner.status === "À risque").length;
   const documents = learners.flatMap((learner) => (learner.documents || []).map((document) => ({ ...document, learnerName: learner.name })));
+  const trainers = state.trainers || [];
+  const planningLearner = getPlanningLearner(learners);
+  const planningModules = getPlanningModuleOptions(planningLearner);
+  const planningEntries = getPlanningEntries(learners);
+  const plannedHours = planningEntries.reduce((sum, entry) => sum + (Number(entry.totalHours) || 0), 0);
+  const canCreatePlanning = Boolean(learners.length && trainers.length && planningModules.length);
   const pedagogicalProgress = learners.map((learner) => ({
     learner,
     progress: progressOf(learner)
@@ -1626,7 +1660,7 @@ function renderAdministration() {
         ${learners.map((learner) => `
           <div>
             <strong>${escapeHtml(learner.name)}</strong>
-            <span>${learner.contractStart ? formatDate(learner.contractStart) : "Début non renseigné"} → ${learner.contractEnd ? formatDate(learner.contractEnd) : "Fin non renseignée"}</span>
+            <span>${learner.contractStart ? formatDate(learner.contractStart) : "Début non renseigné"} → ${learner.contractEnd ? formatDate(learner.contractEnd) : "Fin non renseignée"} · ${learner.contractHours ? formatHours(learner.contractHours) : "heures non renseignées"}</span>
           </div>
         `).join("") || `<div class="empty-state">Aucun contrat.</div>`}
       </div>
@@ -1638,6 +1672,54 @@ function renderAdministration() {
         ${pedagogicalProgress.map(({ learner, progress }) => `
           <div><strong>${escapeHtml(learner.name)}</strong><span>${progress}% validé · ${escapeHtml(learner.program)}</span></div>
         `).join("") || `<div class="empty-state">Aucun apprenant.</div>`}
+      </div>
+    </article>
+    <article class="administration-card administration-card-wide planning-card">
+      <div class="panel-heading">
+        <h3>Planning annuel de formation</h3>
+        <span>${formatHours(plannedHours)} planifiée(s)</span>
+      </div>
+      <form class="planning-form" id="planningForm">
+        <label>
+          <span>Apprenant</span>
+          <select id="planningLearner">
+            ${learners.map((learner) => `<option value="${learner.id}" ${learner.id === planningLearner?.id ? "selected" : ""}>${escapeHtml(learner.name)} - ${escapeHtml(learner.program)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Formateur</span>
+          <select id="planningTrainer">
+            ${trainers.map((trainer) => `<option value="${trainer.id}">${escapeHtml(personFullName(trainer) || "Formateur sans nom")}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Module</span>
+          <select id="planningModule">
+            ${planningModules.map((module) => `<option value="${escapeHtml(module)}">${escapeHtml(module)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Heures par jour</span>
+          <input id="planningHoursPerDay" min="0.25" step="0.25" type="number" placeholder="Ex. 7" required>
+        </label>
+        <label>
+          <span>Année du planning</span>
+          <input id="planningYear" min="2020" max="2040" step="1" type="number" value="${selectedPlanningYear}" required>
+        </label>
+        <div class="planning-calendar-wrap">
+          <div class="planning-calendar-heading">
+            <strong>Calendrier ${selectedPlanningYear}</strong>
+            <span>${selectedPlanningDates.length} jour(s) sélectionné(s)</span>
+          </div>
+          ${renderAnnualCalendar(selectedPlanningYear)}
+        </div>
+        <button class="primary-button" type="submit" ${canCreatePlanning ? "" : "disabled"}>Ajouter au planning</button>
+        ${canCreatePlanning ? "" : `<p class="helper-text planning-helper">Ajoutez au moins un apprenant, un formateur et un module de référentiel pour créer le planning.</p>`}
+      </form>
+      <div class="planning-list">
+        ${planningEntries.length
+          ? planningEntries.slice(0, 8).map(planningEntryTemplate).join("")
+          : `<div class="empty-state">Aucune séance planifiée pour le moment.</div>`}
       </div>
     </article>
     <article class="administration-card administration-card-wide">
@@ -1674,6 +1756,162 @@ function renderAdministration() {
   if (documentForm) {
     documentForm.addEventListener("submit", addDocument);
   }
+
+  const planningForm = document.querySelector("#planningForm");
+  if (planningForm) {
+    planningForm.addEventListener("submit", addPlanningEntry);
+  }
+
+  const planningLearnerSelect = document.querySelector("#planningLearner");
+  if (planningLearnerSelect) {
+    planningLearnerSelect.addEventListener("change", () => {
+      selectedPlanningLearnerId = planningLearnerSelect.value;
+      renderAdministration();
+    });
+  }
+
+  const planningYearInput = document.querySelector("#planningYear");
+  if (planningYearInput) {
+    planningYearInput.addEventListener("change", () => {
+      const nextYear = Number(planningYearInput.value);
+      if (Number.isFinite(nextYear) && nextYear >= 2020 && nextYear <= 2040) {
+        selectedPlanningYear = nextYear;
+        selectedPlanningDates = [];
+        renderAdministration();
+      }
+    });
+  }
+
+  document.querySelectorAll("[data-planning-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      togglePlanningDate(button.dataset.planningDate);
+      renderAdministration();
+    });
+  });
+}
+
+function getPlanningLearner(learners) {
+  if (!learners.length) {
+    selectedPlanningLearnerId = null;
+    return null;
+  }
+
+  const learner = learners.find((item) => item.id === selectedPlanningLearnerId) || learners[0];
+  selectedPlanningLearnerId = learner.id;
+  return learner;
+}
+
+function getPlanningEntries(learners = state.learners) {
+  return learners.flatMap((learner) => (
+    (learner.trainingPlan || []).map((entry) => ({
+      ...entry,
+      learnerId: learner.id,
+      learnerName: learner.name
+    }))
+  )).sort((first, second) => {
+    const firstDate = first.dates?.[0] || "";
+    const secondDate = second.dates?.[0] || "";
+    return firstDate.localeCompare(secondDate);
+  });
+}
+
+function getTrainerPlanningEntries(trainerId) {
+  return getPlanningEntries(state.learners)
+    .filter((entry) => entry.trainerId === trainerId);
+}
+
+function getLearnerPlannedHours(learner) {
+  return (learner.trainingPlan || [])
+    .reduce((sum, entry) => sum + (Number(entry.totalHours) || 0), 0);
+}
+
+function getPlanningModuleOptions(learner) {
+  if (!learner) {
+    return [];
+  }
+
+  const moduleNames = new Set((learner.modules || []).map((module) => module.name));
+  (state.referentials || [])
+    .filter((referential) => sameProgram(referential.program, learner.program))
+    .forEach((referential) => {
+      modulesFromReferential(referential).forEach((module) => moduleNames.add(module.name));
+    });
+
+  return [...moduleNames].filter(Boolean);
+}
+
+function renderAnnualCalendar(year) {
+  const monthNames = [
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre"
+  ];
+
+  return `
+    <div class="planning-calendar">
+      ${monthNames.map((monthName, monthIndex) => {
+        const firstWeekDay = new Date(year, monthIndex, 1).getDay();
+        const leadingBlanks = firstWeekDay === 0 ? 6 : firstWeekDay - 1;
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const blanks = Array.from({ length: leadingBlanks }, (_, index) => `<span class="calendar-blank" aria-hidden="true" data-blank="${index}"></span>`).join("");
+        const days = Array.from({ length: daysInMonth }, (_, index) => {
+          const day = index + 1;
+          const dateValue = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const isSelected = selectedPlanningDates.includes(dateValue);
+          return `<button class="calendar-day ${isSelected ? "selected" : ""}" type="button" data-planning-date="${dateValue}" aria-pressed="${isSelected}">${day}</button>`;
+        }).join("");
+
+        return `
+          <section class="calendar-month">
+            <strong>${monthName}</strong>
+            <div class="calendar-weekdays" aria-hidden="true">
+              <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+            </div>
+            <div class="calendar-days">${blanks}${days}</div>
+          </section>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function togglePlanningDate(dateValue) {
+  selectedPlanningDates = selectedPlanningDates.includes(dateValue)
+    ? selectedPlanningDates.filter((date) => date !== dateValue)
+    : [...selectedPlanningDates, dateValue].sort();
+}
+
+function planningEntryTemplate(entry) {
+  return `
+    <article class="planning-entry">
+      <div>
+        <strong>${escapeHtml(entry.module || "Module non renseigné")}</strong>
+        <span>${escapeHtml(entry.learnerName || "Apprenant non renseigné")} · ${escapeHtml(entry.trainerName || "Formateur non renseigné")}</span>
+      </div>
+      <span>${entry.dates?.length || 0} jour(s) · ${formatHours(Number(entry.totalHours) || 0)} · ${formatPlanningDates(entry.dates || [])}</span>
+    </article>
+  `;
+}
+
+function formatPlanningDates(dates) {
+  if (!dates.length) {
+    return "dates non renseignées";
+  }
+
+  if (dates.length === 1) {
+    return formatDate(dates[0]);
+  }
+
+  return `${formatDate(dates[0])} → ${formatDate(dates[dates.length - 1])}`;
 }
 
 function administrationCard(title, value, detail) {
@@ -1869,6 +2107,15 @@ function renderTraineeSpace() {
       </section>
 
       <section>
+        <h3>Mon planning</h3>
+        <div class="planning-list compact">
+          ${(learner.trainingPlan || []).length
+            ? learner.trainingPlan.map((entry) => planningEntryTemplate({ ...entry, learnerName: learner.name })).join("")
+            : `<div class="empty-state">Aucune séance planifiée pour le moment.</div>`}
+        </div>
+      </section>
+
+      <section>
         <h3>Messages</h3>
         <div class="chat-thread trainee-chat-thread">
           ${messages.length
@@ -1979,6 +2226,7 @@ function addLearner(event) {
   const endDate = document.querySelector("#learnerEnd").value;
   const contractStart = document.querySelector("#learnerContractStart").value;
   const contractEnd = document.querySelector("#learnerContractEnd").value;
+  const contractHours = Number(document.querySelector("#learnerContractHours").value) || 0;
   const status = document.querySelector("#learnerStatus").value;
   const attendance = Number(document.querySelector("#learnerAttendance").value);
 
@@ -1996,6 +2244,7 @@ function addLearner(event) {
     endDate,
     contractStart,
     contractEnd,
+    contractHours,
     status,
     attendance,
     accessCode: existingLearner?.accessCode || generateAccessCode(name),
@@ -2004,7 +2253,8 @@ function addLearner(event) {
       : modulesForProgram(program, modality),
     notes: existingLearner?.notes || [],
     messages: existingLearner?.messages || [],
-    documents: existingLearner?.documents || []
+    documents: existingLearner?.documents || [],
+    trainingPlan: existingLearner?.trainingPlan || []
   };
 
   if (existingLearner) {
@@ -2053,6 +2303,7 @@ function editLearner(learnerId) {
   document.querySelector("#learnerEnd").value = learner.endDate || "";
   document.querySelector("#learnerContractStart").value = learner.contractStart || "";
   document.querySelector("#learnerContractEnd").value = learner.contractEnd || "";
+  document.querySelector("#learnerContractHours").value = learner.contractHours || "";
   document.querySelector("#learnerStatus").value = learner.status;
   document.querySelector("#learnerAttendance").value = learner.attendance;
   learnerDialog.showModal();
@@ -2407,6 +2658,38 @@ function addDocument(event) {
     renderAdministration();
   });
   reader.readAsDataURL(file);
+}
+
+function addPlanningEntry(event) {
+  event.preventDefault();
+  const learner = state.learners.find((item) => item.id === document.querySelector("#planningLearner").value);
+  const trainer = (state.trainers || []).find((item) => item.id === document.querySelector("#planningTrainer").value);
+  const module = document.querySelector("#planningModule").value;
+  const hoursPerDay = Number(document.querySelector("#planningHoursPerDay").value);
+
+  if (!learner || !trainer || !module || !selectedPlanningDates.length || !Number.isFinite(hoursPerDay) || hoursPerDay <= 0) {
+    return;
+  }
+
+  learner.trainingPlan = learner.trainingPlan || [];
+  learner.trainingPlan.unshift({
+    id: crypto.randomUUID(),
+    dates: [...selectedPlanningDates].sort(),
+    module,
+    trainerId: trainer.id,
+    trainerName: personFullName(trainer),
+    hoursPerDay,
+    totalHours: selectedPlanningDates.length * hoursPerDay,
+    createdAt: new Date().toISOString()
+  });
+
+  selectedPlanningLearnerId = learner.id;
+  selectedPlanningDates = [];
+  saveState();
+  renderAdministration();
+  renderTrainers();
+  renderLearners();
+  renderTraineeSpace();
 }
 
 function addMessage(event) {
