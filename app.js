@@ -1,6 +1,7 @@
 const STORAGE_KEY = "alliance-learning-tracker-v1";
 const SESSION_KEY = "alliance-session-v1";
 const ADMIN_CODE = "ALLIANCE2026";
+const REALTIME_SYNC_INTERVAL = 3000;
 
 const defaultCenter = {
   name: "Alliance",
@@ -344,6 +345,7 @@ let currentTraineeId = null;
 let currentTrainerId = null;
 let currentTutorId = null;
 let currentRole = null;
+let realtimeSyncTimer = null;
 
 const views = {
   dashboard: document.querySelector("#dashboardView"),
@@ -453,6 +455,7 @@ async function initializeApp() {
   restoreSession();
   selectedLearnerId = state.learners[0]?.id || null;
   selectedMessageLearnerId = state.learners[0]?.id || null;
+  startRealtimeSync();
   render();
 }
 
@@ -654,6 +657,83 @@ async function saveServerState() {
   } catch {
     // LocalStorage remains the offline fallback.
   }
+}
+
+function startRealtimeSync() {
+  if (!isServerMode() || realtimeSyncTimer) {
+    return;
+  }
+
+  realtimeSyncTimer = setInterval(syncMessagesFromServer, REALTIME_SYNC_INTERVAL);
+}
+
+async function syncMessagesFromServer() {
+  if (!currentRole || !isServerMode()) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/state", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+
+    const serverState = await response.json();
+    if (!serverState || !Array.isArray(serverState.learners)) {
+      return;
+    }
+
+    const changed = mergeMessageCollections(serverState);
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderMessages();
+      renderTraineeSpace();
+      renderTutors();
+    }
+  } catch {
+    // The app keeps working; the next sync will retry.
+  }
+}
+
+function mergeMessageCollections(serverState) {
+  let changed = false;
+  changed = mergeMessagesByOwner(state.learners, serverState.learners || [], "messages") || changed;
+  changed = mergeMessagesByOwner(state.tutors || [], serverState.tutors || [], "messages") || changed;
+  return changed;
+}
+
+function mergeMessagesByOwner(localOwners, serverOwners, key) {
+  let changed = false;
+  serverOwners.forEach((serverOwner) => {
+    const localOwner = localOwners.find((owner) => owner.id === serverOwner.id);
+    if (!localOwner || !Array.isArray(serverOwner[key])) {
+      return;
+    }
+
+    localOwner[key] = localOwner[key] || [];
+    let ownerChanged = false;
+    const knownMessages = new Set(localOwner[key].map(getMessageKey));
+    serverOwner[key].forEach((message) => {
+      if (knownMessages.has(getMessageKey(message))) {
+        return;
+      }
+
+      localOwner[key].push(message);
+      knownMessages.add(getMessageKey(message));
+      ownerChanged = true;
+      changed = true;
+    });
+
+    if (ownerChanged) {
+      localOwner[key].sort((first, second) => String(first.date || "").localeCompare(String(second.date || "")));
+    }
+  });
+
+  return changed;
+}
+
+function getMessageKey(message) {
+  return message.id || `${message.date || ""}|${message.sender || ""}|${message.text || ""}`;
 }
 
 function isServerMode() {
