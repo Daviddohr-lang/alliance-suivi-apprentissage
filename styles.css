@@ -729,9 +729,47 @@ textarea {
 
 .referential-list,
 .referential-categories,
-.referential-items {
+.referential-items,
+.referential-tools,
+.library-list {
   display: grid;
   gap: 10px;
+}
+
+.library-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.library-summary span,
+.library-item span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.library-list {
+  margin-bottom: 16px;
+}
+
+.library-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.library-item p {
+  margin: 4px 0 0;
 }
 
 .referential-card {

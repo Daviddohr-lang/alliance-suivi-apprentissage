@@ -121,6 +121,17 @@ const trainingPrograms = [
   "FPA : Formateur Pour Adulte"
 ];
 
+const defaultLibraryItems = defaultReferentials.flatMap((referential) => (
+  referential.categories.flatMap((category) => (
+    category.items.map((item) => ({
+      id: `${item.id}-library`,
+      domain: referential.program,
+      module: category.title,
+      text: item.text
+    }))
+  ))
+));
+
 const defaultLearners = [
   {
     id: crypto.randomUUID(),
@@ -352,6 +363,11 @@ const programList = document.querySelector("#programList");
 const profileGrid = document.querySelector("#profileGrid");
 const profileHomeGrid = document.querySelector("#profileHomeGrid");
 const referentialItemForm = document.querySelector("#referentialItemForm");
+const referentialLibraryForm = document.querySelector("#referentialLibraryForm");
+const referentialLibrarySearch = document.querySelector("#referentialLibrarySearch");
+const referentialLibrarySelect = document.querySelector("#referentialLibrarySelect");
+const referentialLibraryList = document.querySelector("#referentialLibraryList");
+const referentialLibraryCount = document.querySelector("#referentialLibraryCount");
 const referentialProgram = document.querySelector("#referentialProgram");
 const referentialModality = document.querySelector("#referentialModality");
 const referentialCategorySelect = document.querySelector("#referentialCategorySelect");
@@ -407,6 +423,9 @@ statusFilter.addEventListener("change", renderLearners);
 learnerForm.addEventListener("submit", addLearner);
 trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
+referentialLibraryForm.addEventListener("submit", addLibraryItem);
+referentialLibrarySearch.addEventListener("input", renderReferentialLibrary);
+document.querySelector("#useLibraryItemButton").addEventListener("click", useSelectedLibraryItem);
 referentialItemForm.addEventListener("submit", addReferentialItem);
 document.querySelector("#createReferentialCategoryButton").addEventListener("click", createReferentialCategory);
 referentialProgram.addEventListener("change", renderReferentialCategoryOptions);
@@ -446,6 +465,7 @@ function loadState() {
       trainers: normalizeTrainers(parsed.trainers || []),
       tutors: normalizeTutors(parsed.tutors || []),
       referentials: normalizeReferentials(parsed.referentials || defaultReferentials),
+      libraryItems: normalizeLibraryItems(parsed.libraryItems || defaultLibraryItems),
       center: { ...defaultCenter, ...(parsed.center || {}) }
     };
   } catch {
@@ -459,6 +479,7 @@ function createDefaultState(center = defaultCenter) {
     trainers: structuredClone(defaultTrainers),
     tutors: structuredClone(defaultTutors),
     referentials: structuredClone(defaultReferentials),
+    libraryItems: structuredClone(defaultLibraryItems),
     center
   };
 }
@@ -562,6 +583,15 @@ function normalizeReferentials(referentials) {
   }));
 }
 
+function normalizeLibraryItems(items) {
+  return items.map((item) => ({
+    id: item.id || crypto.randomUUID(),
+    domain: item.domain || "Domaine non renseigné",
+    module: item.module || "",
+    text: item.text || item.name || "Élément sans titre"
+  }));
+}
+
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   saveServerState();
@@ -589,6 +619,7 @@ async function loadServerState() {
       trainers: normalizeTrainers(serverState.trainers || []),
       tutors: normalizeTutors(serverState.tutors || []),
       referentials: normalizeReferentials(serverState.referentials || defaultReferentials),
+      libraryItems: normalizeLibraryItems(serverState.libraryItems || defaultLibraryItems),
       center: { ...defaultCenter, ...(serverState.center || {}) }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -862,6 +893,7 @@ function renderReferentials() {
     .map((program) => `<option value="${escapeHtml(program)}">${escapeHtml(program)}</option>`)
     .join("");
   renderReferentialCategoryOptions();
+  renderReferentialLibrary();
 
   const itemCount = referentials.reduce((sum, referential) => (
     sum + referential.categories.reduce((categorySum, category) => categorySum + category.items.length, 0)
@@ -918,6 +950,34 @@ function renderReferentials() {
   });
 
   attachReferentialDragHandlers();
+}
+
+function renderReferentialLibrary() {
+  const query = normalizeText(referentialLibrarySearch.value);
+  const items = (state.libraryItems || []).filter((item) => (
+    !query || normalizeText(`${item.domain} ${item.module} ${item.text}`).includes(query)
+  ));
+
+  referentialLibraryCount.textContent = `${state.libraryItems?.length || 0} élément(s)`;
+  referentialLibrarySelect.innerHTML = items.length
+    ? items.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.domain)}${item.module ? ` · ${escapeHtml(item.module)}` : ""} · ${escapeHtml(item.text)}</option>`).join("")
+    : `<option value="">Aucun élément trouvé</option>`;
+  referentialLibrarySelect.disabled = !items.length;
+
+  referentialLibraryList.innerHTML = items.slice(0, 8).map((item) => `
+    <article class="library-item">
+      <div>
+        <strong>${escapeHtml(item.domain)}</strong>
+        <span>${escapeHtml(item.module || "Module non renseigné")}</span>
+        <p>${escapeHtml(item.text)}</p>
+      </div>
+      <button class="icon-danger-button" type="button" data-delete-library-item="${item.id}" aria-label="Supprimer cet élément de base" title="Supprimer"></button>
+    </article>
+  `).join("") || `<div class="empty-state">Aucun élément dans la base.</div>`;
+
+  referentialLibraryList.querySelectorAll("[data-delete-library-item]").forEach((button) => {
+    button.addEventListener("click", () => deleteLibraryItem(button.dataset.deleteLibraryItem));
+  });
 }
 
 function renderReferentialCategoryOptions() {
@@ -1581,6 +1641,41 @@ function addReferentialItem(event) {
   renderReferentials();
 }
 
+function addLibraryItem(event) {
+  event.preventDefault();
+  const domain = document.querySelector("#referentialLibraryDomain").value.trim();
+  const module = document.querySelector("#referentialLibraryModule").value.trim();
+  const text = document.querySelector("#referentialLibraryText").value.trim();
+  if (!text) {
+    document.querySelector("#referentialLibraryText").focus();
+    return;
+  }
+
+  state.libraryItems = state.libraryItems || [];
+  state.libraryItems.unshift({
+    id: crypto.randomUUID(),
+    domain: domain || "Référentiel général",
+    module,
+    text
+  });
+
+  referentialLibraryForm.reset();
+  saveState();
+  renderReferentials();
+}
+
+function useSelectedLibraryItem() {
+  const item = (state.libraryItems || []).find((candidate) => candidate.id === referentialLibrarySelect.value);
+  if (!item) {
+    return;
+  }
+
+  document.querySelector("#referentialItemText").value = item.text;
+  if (!document.querySelector("#referentialCategory").value && item.module) {
+    document.querySelector("#referentialCategory").value = item.module;
+  }
+}
+
 function createReferentialCategory() {
   const program = referentialProgram.value;
   const modality = referentialModality.value;
@@ -2119,6 +2214,7 @@ function importBackup(event) {
         trainers: normalizeTrainers(importedState.trainers || []),
         tutors: normalizeTutors(importedState.tutors || []),
         referentials: normalizeReferentials(importedState.referentials || defaultReferentials),
+        libraryItems: normalizeLibraryItems(importedState.libraryItems || defaultLibraryItems),
         center: { ...defaultCenter, ...(importedState.center || {}) }
       };
       selectedLearnerId = state.learners[0]?.id || null;
@@ -2209,6 +2305,17 @@ function deleteReferentialItem(referentialId, categoryId, itemId) {
 
   category.items = category.items.filter((item) => item.id !== itemId);
   referential.categories = referential.categories.filter((item) => item.items.length);
+  saveState();
+  renderReferentials();
+}
+
+function deleteLibraryItem(itemId) {
+  const item = (state.libraryItems || []).find((candidate) => candidate.id === itemId);
+  if (!item || !confirm("Supprimer cet élément de la base réutilisable ?")) {
+    return;
+  }
+
+  state.libraryItems = (state.libraryItems || []).filter((candidate) => candidate.id !== itemId);
   saveState();
   renderReferentials();
 }

@@ -179,43 +179,78 @@
           </div>
 
           <div class="referentials-layout">
-            <form class="panel referential-form" id="referentialItemForm">
-              <h3>Ajouter une compétence</h3>
-              <label>
-                <span>Formation</span>
-                <select id="referentialProgram" required></select>
-              </label>
-              <div class="form-grid compact">
+            <div class="referential-tools">
+              <form class="panel referential-form" id="referentialLibraryForm">
+                <h3>Base de données référentiel</h3>
                 <label>
-                  <span>Modalité</span>
-                  <select id="referentialModality">
-                    <option>Présentiel</option>
-                    <option>Distanciel</option>
-                    <option>Hybride</option>
-                  </select>
+                  <span>Rechercher un élément</span>
+                  <input id="referentialLibrarySearch" type="search" placeholder="Ex. code pénal, incendie, communication...">
                 </label>
                 <label>
-                  <span>Sous-menu existant</span>
-                  <select id="referentialCategorySelect"></select>
+                  <span>Élément enregistré</span>
+                  <select id="referentialLibrarySelect"></select>
                 </label>
-              </div>
-              <label>
-                <span>Nouveau sous-menu / module</span>
-                <input id="referentialCategory" placeholder="Ex. Intégration">
-              </label>
-              <button class="ghost-button" id="createReferentialCategoryButton" type="button">Créer le sous-menu</button>
-              <label>
-                <span>Compétence ou objectif</span>
-                <textarea id="referentialItemText" rows="4" placeholder="Ex. Connaître le livre VI du CSI"></textarea>
-              </label>
-              <button class="primary-button" type="submit">Ajouter au référentiel</button>
-            </form>
+                <button class="ghost-button" id="useLibraryItemButton" type="button">Utiliser cet élément</button>
+                <div class="form-grid compact">
+                  <label>
+                    <span>Domaine</span>
+                    <input id="referentialLibraryDomain" placeholder="Ex. Sécurité privée">
+                  </label>
+                  <label>
+                    <span>Module type</span>
+                    <input id="referentialLibraryModule" placeholder="Ex. Environnement juridique">
+                  </label>
+                </div>
+                <label>
+                  <span>Nouvel élément de base</span>
+                  <textarea id="referentialLibraryText" rows="3" placeholder="Élément réutilisable dans plusieurs formations..."></textarea>
+                </label>
+                <button class="primary-button" type="submit">Enregistrer dans la base</button>
+              </form>
+
+              <form class="panel referential-form" id="referentialItemForm">
+                <h3>Ajouter une compétence</h3>
+                <label>
+                  <span>Formation</span>
+                  <select id="referentialProgram" required></select>
+                </label>
+                <div class="form-grid compact">
+                  <label>
+                    <span>Modalité</span>
+                    <select id="referentialModality">
+                      <option>Présentiel</option>
+                      <option>Distanciel</option>
+                      <option>Hybride</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Sous-menu existant</span>
+                    <select id="referentialCategorySelect"></select>
+                  </label>
+                </div>
+                <label>
+                  <span>Nouveau sous-menu / module</span>
+                  <input id="referentialCategory" placeholder="Ex. Intégration">
+                </label>
+                <button class="ghost-button" id="createReferentialCategoryButton" type="button">Créer le sous-menu</button>
+                <label>
+                  <span>Compétence ou objectif</span>
+                  <textarea id="referentialItemText" rows="4" placeholder="Ex. Connaître le livre VI du CSI"></textarea>
+                </label>
+                <button class="primary-button" type="submit">Ajouter au référentiel</button>
+              </form>
+            </div>
 
             <section class="panel">
               <div class="panel-heading">
                 <h3>Liste des référentiels</h3>
                 <span id="referentialCount">0</span>
               </div>
+              <div class="library-summary">
+                <strong>Base réutilisable</strong>
+                <span id="referentialLibraryCount">0 élément(s)</span>
+              </div>
+              <div class="library-list" id="referentialLibraryList"></div>
               <div class="referential-list" id="referentialList"></div>
             </section>
           </div>
