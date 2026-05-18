@@ -377,6 +377,7 @@ const referentialPart = document.querySelector("#referentialPart");
 const referentialGeneralObjective = document.querySelector("#referentialGeneralObjective");
 const referentialSpecificObjective = document.querySelector("#referentialSpecificObjective");
 const referentialSubmitButton = document.querySelector("#referentialSubmitButton");
+const referentialContinueButton = document.querySelector("#referentialContinueButton");
 const referentialList = document.querySelector("#referentialList");
 const referentialCount = document.querySelector("#referentialCount");
 const learnerList = document.querySelector("#learnerList");
@@ -1646,6 +1647,7 @@ function addTutor(event) {
 
 function addReferentialItem(event) {
   event.preventDefault();
+  const shouldContinue = event.submitter?.dataset.action === "continue" && !editingReferentialItem;
   const program = referentialProgram.value;
   const modality = referentialModality.value;
   const theme = referentialTheme.value.trim();
@@ -1696,9 +1698,15 @@ function addReferentialItem(event) {
   });
 
   selectedReferentialId = referential?.id || selectedReferentialId;
-  clearReferentialForm();
   saveState();
-  showReferentialList();
+  if (shouldContinue) {
+    clearReferentialForm();
+    referentialProgram.value = program;
+    referentialModality.value = modality;
+    referentialTheme.focus();
+  } else {
+    showReferentialList();
+  }
   renderReferentials();
 }
 
@@ -1708,7 +1716,8 @@ function showReferentialList() {
   referentialFormPanel.hidden = true;
   referentialListPanel.hidden = false;
   referentialFormTitle.textContent = "Créer un élément";
-  referentialSubmitButton.textContent = "Créer dans le référentiel";
+  referentialSubmitButton.textContent = "Créer puis voir la liste";
+  referentialContinueButton.hidden = false;
 }
 
 function showReferentialForm() {
@@ -1717,7 +1726,8 @@ function showReferentialForm() {
   referentialListPanel.hidden = true;
   referentialFormPanel.hidden = false;
   referentialFormTitle.textContent = "Créer ou compléter un référentiel";
-  referentialSubmitButton.textContent = "Créer dans le référentiel";
+  referentialSubmitButton.textContent = "Créer puis voir la liste";
+  referentialContinueButton.hidden = false;
   const referential = (state.referentials || []).find((item) => item.id === selectedReferentialId);
   if (referential) {
     referentialProgram.value = referential.program;
@@ -1738,6 +1748,7 @@ function editReferentialItem(referentialId, categoryId, itemId) {
   referentialFormPanel.hidden = false;
   referentialFormTitle.textContent = "Modifier l'élément";
   referentialSubmitButton.textContent = "Enregistrer la modification";
+  referentialContinueButton.hidden = true;
   referentialProgram.value = location.referential.program;
   referentialModality.value = location.referential.modality;
   referentialTheme.value = location.category.title;
