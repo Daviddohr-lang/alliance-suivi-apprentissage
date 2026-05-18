@@ -799,6 +799,7 @@ function updateNavigationAccess() {
   document.querySelector("#resetDataButton").hidden = currentRole !== "admin";
   trainerForm.hidden = currentRole !== "admin";
   tutorForm.hidden = currentRole !== "admin";
+  centerForm.hidden = currentRole !== "admin";
 }
 
 function getAllowedViews() {
@@ -807,7 +808,7 @@ function getAllowedViews() {
   }
 
   if (currentRole === "trainer") {
-    return ["dashboard", "trainers", "learners", "followup", "messages"];
+    return ["dashboard", "trainers", "learners", "followup", "messages", "center"];
   }
 
   if (currentRole === "tutor") {
