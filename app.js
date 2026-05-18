@@ -403,6 +403,7 @@ const messageLearnerList = document.querySelector("#messageLearnerList");
 const chatHeading = document.querySelector("#chatHeading");
 const chatThread = document.querySelector("#chatThread");
 const messageForm = document.querySelector("#messageForm");
+const messageRecipient = document.querySelector("#messageRecipient");
 const traineeLoginForm = document.querySelector("#traineeLoginForm");
 const traineeSpace = document.querySelector("#traineeSpace");
 const traineeLogoutButton = document.querySelector("#traineeLogoutButton");
@@ -810,7 +811,7 @@ function getAllowedViews() {
   }
 
   if (currentRole === "tutor") {
-    return ["dashboard", "tutors"];
+    return ["dashboard", "tutors", "messages"];
   }
 
   if (currentRole === "trainee") {
@@ -1510,6 +1511,10 @@ function renderMessages() {
   }
 
   messageForm.hidden = false;
+  const recipients = getConversationRecipients(learner);
+  messageRecipient.innerHTML = recipients.map((recipient) => (
+    `<option value="${escapeHtml(recipient.value)}">${escapeHtml(recipient.label)}</option>`
+  )).join("");
   chatHeading.innerHTML = `
     <div>
       <h3>${escapeHtml(learner.name)}</h3>
@@ -1519,14 +1524,100 @@ function renderMessages() {
 
   const messages = learner.messages || [];
   chatThread.innerHTML = messages.length
-    ? messages.map((message) => `
-      <article class="chat-message ${message.sender === "Stagiaire" ? "from-learner" : message.sender === "Christophe" ? "from-ai" : "from-center"}">
-        <small>${escapeHtml(message.sender)} · ${formatDateTime(message.date)}</small>
-        <p>${escapeHtml(message.text)}</p>
-      </article>
-    `).join("")
+    ? messages.map(messageTemplate).join("")
     : `<div class="empty-state">Aucun message pour le moment.</div>`;
   chatThread.scrollTop = chatThread.scrollHeight;
+}
+
+function messageTemplate(message) {
+  return `
+    <article class="chat-message ${getMessageClass(message)}">
+      <small>${escapeHtml(getMessageMeta(message))}</small>
+      <p>${escapeHtml(message.text)}</p>
+    </article>
+  `;
+}
+
+function getMessageMeta(message) {
+  const recipient = message.recipient ? ` → ${message.recipient}` : "";
+  return `${message.sender}${recipient} · ${formatDateTime(message.date)}`;
+}
+
+function getMessageClass(message) {
+  if (message.sender === "Christophe" || message.sender?.includes("assistant IA")) {
+    return "from-ai";
+  }
+
+  if (message.sender?.startsWith("Apprenant") || message.sender === "Stagiaire") {
+    return "from-learner";
+  }
+
+  if (message.sender?.startsWith("Formateur")) {
+    return "from-trainer";
+  }
+
+  if (message.sender?.startsWith("Tuteur")) {
+    return "from-tutor";
+  }
+
+  return "from-center";
+}
+
+function getConversationRecipients(learner) {
+  const recipients = [];
+  if (currentRole !== "admin") {
+    recipients.push({ value: "Administratif Alliance", label: "Administratif Alliance" });
+  }
+
+  if (currentRole !== "trainee") {
+    recipients.push({ value: `Apprenant - ${learner.name}`, label: `Apprenant - ${learner.name}` });
+  }
+
+  if (currentRole !== "trainer") {
+    getLearnerTrainers(learner.id).forEach((trainer) => {
+      recipients.push({ value: `Formateur - ${personFullName(trainer)}`, label: `Formateur - ${personFullName(trainer)}` });
+    });
+  }
+
+  if (currentRole !== "tutor") {
+    getLearnerTutors(learner.id).forEach((tutor) => {
+      recipients.push({ value: `Tuteur - ${tutorFullName(tutor)}`, label: `Tuteur - ${tutorFullName(tutor)}` });
+    });
+  }
+
+  if (currentRole === "trainee") {
+    recipients.push({ value: "Christophe - assistant IA", label: "Christophe - assistant IA" });
+  }
+
+  return recipients.length
+    ? recipients
+    : [{ value: "Administratif Alliance", label: "Administratif Alliance" }];
+}
+
+function getCurrentActorLabel(learner) {
+  if (currentRole === "trainer") {
+    const trainer = state.trainers.find((item) => item.id === currentTrainerId);
+    return `Formateur - ${trainer ? personFullName(trainer) : "Non renseigné"}`;
+  }
+
+  if (currentRole === "tutor") {
+    const tutor = state.tutors.find((item) => item.id === currentTutorId);
+    return `Tuteur - ${tutor ? tutorFullName(tutor) : "Non renseigné"}`;
+  }
+
+  if (currentRole === "trainee") {
+    return `Apprenant - ${learner?.name || "Non renseigné"}`;
+  }
+
+  return "Administratif Alliance";
+}
+
+function getLearnerTrainers(learnerId) {
+  return (state.trainers || []).filter((trainer) => (trainer.learnerIds || []).includes(learnerId));
+}
+
+function getLearnerTutors(learnerId) {
+  return (state.tutors || []).filter((tutor) => tutor.learnerId === learnerId);
 }
 
 function renderTraineeSpace() {
@@ -1567,23 +1658,24 @@ function renderTraineeSpace() {
       </section>
 
       <section>
-        <h3>Messages avec le centre</h3>
+        <h3>Messages</h3>
         <div class="chat-thread trainee-chat-thread">
           ${messages.length
-            ? messages.map((message) => `
-              <article class="chat-message ${message.sender === "Stagiaire" ? "from-learner" : message.sender === "Christophe" ? "from-ai" : "from-center"}">
-                <small>${escapeHtml(message.sender)} · ${formatDateTime(message.date)}</small>
-                <p>${escapeHtml(message.text)}</p>
-              </article>
-            `).join("")
+            ? messages.map(messageTemplate).join("")
             : `<div class="empty-state">Aucun message pour le moment.</div>`}
         </div>
         <form class="trainee-message-form" id="traineeMessageForm">
           <label>
-            <span>Message au centre</span>
-            <textarea id="traineeMessageText" rows="3" placeholder="Écrire au centre..." required></textarea>
+            <span>Destinataire</span>
+            <select id="traineeMessageRecipient">
+              ${getConversationRecipients(learner).map((recipient) => `<option value="${escapeHtml(recipient.value)}">${escapeHtml(recipient.label)}</option>`).join("")}
+            </select>
           </label>
-          <button class="primary-button" type="submit">Envoyer au centre</button>
+          <label>
+            <span>Message</span>
+            <textarea id="traineeMessageText" rows="3" placeholder="Écrire un message..." required></textarea>
+          </label>
+          <button class="primary-button" type="submit">Envoyer</button>
         </form>
       </section>
     </div>
@@ -1925,12 +2017,13 @@ function addMessage(event) {
   learner.messages = learner.messages || [];
   learner.messages.push({
     id: crypto.randomUUID(),
-    sender: document.querySelector("#messageSender").value,
+    sender: getCurrentActorLabel(learner),
+    recipient: messageRecipient.value,
     text,
     date: new Date().toISOString()
   });
 
-  if (document.querySelector("#messageSender").value === "Stagiaire") {
+  if (messageRecipient.value === "Christophe - assistant IA") {
     addChristopheReply(learner, text).then(() => {
       saveState();
       renderMessages();
@@ -2079,19 +2172,24 @@ function sendTraineeMessage(event) {
     return;
   }
 
+  const recipient = document.querySelector("#traineeMessageRecipient").value;
   learner.messages = learner.messages || [];
   learner.messages.push({
     id: crypto.randomUUID(),
-    sender: "Stagiaire",
+    sender: getCurrentActorLabel(learner),
+    recipient,
     text,
     date: new Date().toISOString()
   });
-  addChristopheReply(learner, text).then(() => {
-    saveState();
-    renderMessages();
-    renderTraineeSpace();
-  });
+  if (recipient === "Christophe - assistant IA") {
+    addChristopheReply(learner, text).then(() => {
+      saveState();
+      renderMessages();
+      renderTraineeSpace();
+    });
+  }
 
+  document.querySelector("#traineeMessageText").value = "";
   saveState();
   renderMessages();
   renderTraineeSpace();
@@ -2102,6 +2200,7 @@ async function addChristopheReply(learner, messageText) {
   learner.messages.push({
     id: crypto.randomUUID(),
     sender: "Christophe",
+    recipient: getCurrentActorLabel(learner),
     text,
     date: new Date(Date.now() + 1000).toISOString()
   });

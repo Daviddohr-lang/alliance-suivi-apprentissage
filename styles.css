@@ -1354,6 +1354,18 @@ textarea {
   border-color: #cfe2d1;
 }
 
+.chat-message.from-trainer {
+  justify-self: end;
+  background: #fff4df;
+  border-color: #ead3a8;
+}
+
+.chat-message.from-tutor {
+  justify-self: start;
+  background: #f2ecf8;
+  border-color: #dbc9e9;
+}
+
 .chat-message.from-learner {
   justify-self: start;
 }
