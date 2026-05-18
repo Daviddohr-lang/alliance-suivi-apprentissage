@@ -812,8 +812,28 @@ textarea {
 }
 
 .referential-category summary > span:not(.referential-actions):not(.drag-handle),
-.referential-item > span:not(.referential-actions):not(.drag-handle) {
+.referential-item-content {
   flex: 1;
+}
+
+.referential-item-content {
+  display: grid;
+  gap: 5px;
+}
+
+.referential-item-content strong {
+  font-size: 0.98rem;
+}
+
+.referential-item-detail {
+  display: grid;
+  gap: 2px;
+}
+
+.referential-item-detail small {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
 }
 
 .drag-handle {

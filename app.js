@@ -363,14 +363,13 @@ const programList = document.querySelector("#programList");
 const profileGrid = document.querySelector("#profileGrid");
 const profileHomeGrid = document.querySelector("#profileHomeGrid");
 const referentialItemForm = document.querySelector("#referentialItemForm");
-const referentialLibraryForm = document.querySelector("#referentialLibraryForm");
-const referentialLibrarySearch = document.querySelector("#referentialLibrarySearch");
-const referentialLibrarySelect = document.querySelector("#referentialLibrarySelect");
-const referentialLibraryList = document.querySelector("#referentialLibraryList");
-const referentialLibraryCount = document.querySelector("#referentialLibraryCount");
 const referentialProgram = document.querySelector("#referentialProgram");
 const referentialModality = document.querySelector("#referentialModality");
-const referentialCategorySelect = document.querySelector("#referentialCategorySelect");
+const referentialDuration = document.querySelector("#referentialDuration");
+const referentialTheme = document.querySelector("#referentialTheme");
+const referentialPart = document.querySelector("#referentialPart");
+const referentialGeneralObjective = document.querySelector("#referentialGeneralObjective");
+const referentialSpecificObjective = document.querySelector("#referentialSpecificObjective");
 const referentialList = document.querySelector("#referentialList");
 const referentialCount = document.querySelector("#referentialCount");
 const learnerList = document.querySelector("#learnerList");
@@ -423,13 +422,7 @@ statusFilter.addEventListener("change", renderLearners);
 learnerForm.addEventListener("submit", addLearner);
 trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
-referentialLibraryForm.addEventListener("submit", addLibraryItem);
-referentialLibrarySearch.addEventListener("input", renderReferentialLibrary);
-document.querySelector("#useLibraryItemButton").addEventListener("click", useSelectedLibraryItem);
 referentialItemForm.addEventListener("submit", addReferentialItem);
-document.querySelector("#createReferentialCategoryButton").addEventListener("click", createReferentialCategory);
-referentialProgram.addEventListener("change", renderReferentialCategoryOptions);
-referentialModality.addEventListener("change", renderReferentialCategoryOptions);
 noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
@@ -577,7 +570,11 @@ function normalizeReferentials(referentials) {
       title: category.title || "Module sans titre",
       items: (category.items || []).map((item) => ({
         id: item.id || crypto.randomUUID(),
-        text: item.text || item.name || "Compétence sans titre"
+        text: item.text || item.name || item.specificObjective || "Compétence sans titre",
+        part: item.part || "",
+        generalObjective: item.generalObjective || "",
+        specificObjective: item.specificObjective || "",
+        duration: item.duration || ""
       }))
     }))
   }));
@@ -892,8 +889,6 @@ function renderReferentials() {
   referentialProgram.innerHTML = programs
     .map((program) => `<option value="${escapeHtml(program)}">${escapeHtml(program)}</option>`)
     .join("");
-  renderReferentialCategoryOptions();
-  renderReferentialLibrary();
 
   const itemCount = referentials.reduce((sum, referential) => (
     sum + referential.categories.reduce((categorySum, category) => categorySum + category.items.length, 0)
@@ -924,7 +919,14 @@ function renderReferentials() {
                 ${category.items.map((item) => `
                   <div class="referential-item" draggable="true" data-referential-id="${referential.id}" data-category-id="${category.id}" data-item-id="${item.id}">
                     <span class="drag-handle" aria-hidden="true"></span>
-                    <span>${escapeHtml(item.text)}</span>
+                    <div class="referential-item-content">
+                      <strong>${escapeHtml(item.part || item.text)}</strong>
+                      <div class="referential-item-detail">
+                        ${item.generalObjective ? `<small>Objectif général : ${escapeHtml(item.generalObjective)}</small>` : ""}
+                        ${item.specificObjective ? `<small>Objectif spécifique : ${escapeHtml(item.specificObjective)}</small>` : ""}
+                        ${item.duration ? `<small>Durée : ${escapeHtml(item.duration)}</small>` : ""}
+                      </div>
+                    </div>
                     <span class="referential-actions">
                       <button class="icon-danger-button" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}" aria-label="Retirer cette compétence" title="Retirer"></button>
                     </span>
@@ -950,46 +952,6 @@ function renderReferentials() {
   });
 
   attachReferentialDragHandlers();
-}
-
-function renderReferentialLibrary() {
-  const query = normalizeText(referentialLibrarySearch.value);
-  const items = (state.libraryItems || []).filter((item) => (
-    !query || normalizeText(`${item.domain} ${item.module} ${item.text}`).includes(query)
-  ));
-
-  referentialLibraryCount.textContent = `${state.libraryItems?.length || 0} élément(s)`;
-  referentialLibrarySelect.innerHTML = items.length
-    ? items.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.domain)}${item.module ? ` · ${escapeHtml(item.module)}` : ""} · ${escapeHtml(item.text)}</option>`).join("")
-    : `<option value="">Aucun élément trouvé</option>`;
-  referentialLibrarySelect.disabled = !items.length;
-
-  referentialLibraryList.innerHTML = items.slice(0, 8).map((item) => `
-    <article class="library-item">
-      <div>
-        <strong>${escapeHtml(item.domain)}</strong>
-        <span>${escapeHtml(item.module || "Module non renseigné")}</span>
-        <p>${escapeHtml(item.text)}</p>
-      </div>
-      <button class="icon-danger-button" type="button" data-delete-library-item="${item.id}" aria-label="Supprimer cet élément de base" title="Supprimer"></button>
-    </article>
-  `).join("") || `<div class="empty-state">Aucun élément dans la base.</div>`;
-
-  referentialLibraryList.querySelectorAll("[data-delete-library-item]").forEach((button) => {
-    button.addEventListener("click", () => deleteLibraryItem(button.dataset.deleteLibraryItem));
-  });
-}
-
-function renderReferentialCategoryOptions() {
-  const referential = (state.referentials || []).find((item) => (
-    item.program === referentialProgram.value && item.modality === referentialModality.value
-  ));
-  const categories = referential?.categories || [];
-
-  referentialCategorySelect.innerHTML = categories.length
-    ? categories.map((category) => `<option value="${escapeHtml(category.title)}">${escapeHtml(category.title)}</option>`).join("")
-    : `<option value="">Aucun sous-menu existant</option>`;
-  referentialCategorySelect.disabled = !categories.length;
 }
 
 function attachReferentialDragHandlers() {
@@ -1616,77 +1578,46 @@ function addReferentialItem(event) {
   event.preventDefault();
   const program = referentialProgram.value;
   const modality = referentialModality.value;
-  const newCategoryTitle = document.querySelector("#referentialCategory").value.trim();
-  const categoryTitle = newCategoryTitle || referentialCategorySelect.value;
-  const text = document.querySelector("#referentialItemText").value.trim();
-  if (!program || !categoryTitle) {
-    document.querySelector("#referentialCategory").focus();
+  const theme = referentialTheme.value.trim();
+  const part = referentialPart.value.trim();
+  const generalObjective = referentialGeneralObjective.value.trim();
+  const specificObjective = referentialSpecificObjective.value.trim();
+  const duration = referentialDuration.value.trim();
+  if (!program || !theme) {
+    referentialTheme.focus();
     return;
   }
 
-  if (!text) {
-    document.querySelector("#referentialItemText").focus();
+  if (!part) {
+    referentialPart.focus();
     return;
   }
 
-  const category = ensureReferentialCategory(program, modality, categoryTitle);
+  if (!generalObjective) {
+    referentialGeneralObjective.focus();
+    return;
+  }
+
+  if (!specificObjective) {
+    referentialSpecificObjective.focus();
+    return;
+  }
+
+  const category = ensureReferentialCategory(program, modality, theme);
   category.items.push({
     id: crypto.randomUUID(),
-    text
+    text: specificObjective,
+    part,
+    generalObjective,
+    specificObjective,
+    duration
   });
 
-  document.querySelector("#referentialCategory").value = "";
-  document.querySelector("#referentialItemText").value = "";
-  saveState();
-  renderReferentials();
-}
-
-function addLibraryItem(event) {
-  event.preventDefault();
-  const domain = document.querySelector("#referentialLibraryDomain").value.trim();
-  const module = document.querySelector("#referentialLibraryModule").value.trim();
-  const text = document.querySelector("#referentialLibraryText").value.trim();
-  if (!text) {
-    document.querySelector("#referentialLibraryText").focus();
-    return;
-  }
-
-  state.libraryItems = state.libraryItems || [];
-  state.libraryItems.unshift({
-    id: crypto.randomUUID(),
-    domain: domain || "Référentiel général",
-    module,
-    text
-  });
-
-  referentialLibraryForm.reset();
-  saveState();
-  renderReferentials();
-}
-
-function useSelectedLibraryItem() {
-  const item = (state.libraryItems || []).find((candidate) => candidate.id === referentialLibrarySelect.value);
-  if (!item) {
-    return;
-  }
-
-  document.querySelector("#referentialItemText").value = item.text;
-  if (!document.querySelector("#referentialCategory").value && item.module) {
-    document.querySelector("#referentialCategory").value = item.module;
-  }
-}
-
-function createReferentialCategory() {
-  const program = referentialProgram.value;
-  const modality = referentialModality.value;
-  const categoryTitle = document.querySelector("#referentialCategory").value.trim();
-  if (!program || !categoryTitle) {
-    document.querySelector("#referentialCategory").focus();
-    return;
-  }
-
-  ensureReferentialCategory(program, modality, categoryTitle);
-  document.querySelector("#referentialCategory").value = "";
+  referentialPart.value = "";
+  referentialGeneralObjective.value = "";
+  referentialSpecificObjective.value = "";
+  referentialDuration.value = "";
+  referentialPart.focus();
   saveState();
   renderReferentials();
 }
@@ -2309,17 +2240,6 @@ function deleteReferentialItem(referentialId, categoryId, itemId) {
   renderReferentials();
 }
 
-function deleteLibraryItem(itemId) {
-  const item = (state.libraryItems || []).find((candidate) => candidate.id === itemId);
-  if (!item || !confirm("Supprimer cet élément de la base réutilisable ?")) {
-    return;
-  }
-
-  state.libraryItems = (state.libraryItems || []).filter((candidate) => candidate.id !== itemId);
-  saveState();
-  renderReferentials();
-}
-
 function moveCategoryToCategory(referentialId, categoryId, targetCategoryId) {
   const referential = (state.referentials || []).find((item) => item.id === referentialId);
   const index = referential?.categories.findIndex((item) => item.id === categoryId) ?? -1;
@@ -2445,10 +2365,15 @@ function getProgramTemplate(program, modality = "Présentiel") {
 
 function modulesFromReferential(referential) {
   return referential.categories.flatMap((category) => (
-    category.items.map((item) => ({
-      name: `${referential.modality} : ${category.title} : ${item.text}`,
-      done: false
-    }))
+    category.items.map((item) => {
+      const part = item.part ? `${category.title} - ${item.part}` : category.title;
+      const objective = item.specificObjective || item.text;
+      const duration = item.duration ? ` (${item.duration})` : "";
+      return {
+        name: `${referential.modality} : ${part} : ${objective}${duration}`,
+        done: false
+      };
+    })
   ));
 }
 

@@ -181,44 +181,13 @@
           <div class="referentials-layout">
             <section class="panel referential-toolbox">
               <div class="panel-heading">
-                <h3>Construire le référentiel</h3>
+                <h3>Créer un élément</h3>
               </div>
 
-              <form class="referential-form" id="referentialLibraryForm">
+              <form class="referential-form" id="referentialItemForm">
                 <div class="toolbox-section-heading">
-                  <strong>Base de données</strong>
-                  <span>Rechercher ou créer un élément réutilisable.</span>
-                </div>
-                <label>
-                  <span>Rechercher un élément</span>
-                  <input id="referentialLibrarySearch" type="search" placeholder="Ex. code pénal, incendie, communication...">
-                </label>
-                <label>
-                  <span>Élément enregistré</span>
-                  <select id="referentialLibrarySelect"></select>
-                </label>
-                <button class="ghost-button" id="useLibraryItemButton" type="button">Utiliser cet élément</button>
-                <div class="form-grid compact">
-                  <label>
-                    <span>Domaine</span>
-                    <input id="referentialLibraryDomain" placeholder="Ex. Sécurité privée">
-                  </label>
-                  <label>
-                    <span>Module type</span>
-                    <input id="referentialLibraryModule" placeholder="Ex. Environnement juridique">
-                  </label>
-                </div>
-                <label>
-                  <span>Nouvel élément de base</span>
-                  <textarea id="referentialLibraryText" rows="3" placeholder="Élément réutilisable dans plusieurs formations..."></textarea>
-                </label>
-                <button class="primary-button" type="submit">Enregistrer dans la base</button>
-              </form>
-
-              <form class="referential-form referential-target-form" id="referentialItemForm">
-                <div class="toolbox-section-heading">
-                  <strong>Référentiel de formation</strong>
-                  <span>Ajouter l'élément dans une formation, un module et une modalité.</span>
+                  <strong>Fiche référentiel</strong>
+                  <span>Renseignez tout dans une seule fenêtre, puis ajoutez l'élément à la liste.</span>
                 </div>
                 <label>
                   <span>Formation</span>
@@ -234,20 +203,27 @@
                     </select>
                   </label>
                   <label>
-                    <span>Sous-menu existant</span>
-                    <select id="referentialCategorySelect"></select>
+                    <span>Durée</span>
+                    <input id="referentialDuration" placeholder="Ex. 4 heures">
                   </label>
                 </div>
                 <label>
-                  <span>Nouveau sous-menu / module</span>
-                  <input id="referentialCategory" placeholder="Ex. Intégration">
+                  <span>Thème</span>
+                  <input id="referentialTheme" required placeholder="Ex. Module juridique">
                 </label>
-                <button class="ghost-button" id="createReferentialCategoryButton" type="button">Créer le sous-menu</button>
                 <label>
-                  <span>Compétence ou objectif</span>
-                  <textarea id="referentialItemText" rows="4" placeholder="Ex. Connaître le livre VI du CSI"></textarea>
+                  <span>Partie</span>
+                  <input id="referentialPart" required placeholder="Ex. Réglementation sur les armes">
                 </label>
-                <button class="primary-button" type="submit">Ajouter au référentiel</button>
+                <label>
+                  <span>Objectif général</span>
+                  <textarea id="referentialGeneralObjective" rows="3" required placeholder="Ex. Connaissance de la réglementation"></textarea>
+                </label>
+                <label>
+                  <span>Objectif pédagogique spécifique</span>
+                  <textarea id="referentialSpecificObjective" rows="3" required placeholder="Ex. Connaître le régime de détention des armes"></textarea>
+                </label>
+                <button class="primary-button" type="submit">Créer dans le référentiel</button>
               </form>
             </section>
 
@@ -256,11 +232,6 @@
                 <h3>Liste des référentiels</h3>
                 <span id="referentialCount">0</span>
               </div>
-              <div class="library-summary">
-                <strong>Base réutilisable</strong>
-                <span id="referentialLibraryCount">0 élément(s)</span>
-              </div>
-              <div class="library-list" id="referentialLibraryList"></div>
               <div class="referential-list" id="referentialList"></div>
             </section>
           </div>
