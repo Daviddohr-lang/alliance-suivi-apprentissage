@@ -338,6 +338,8 @@ const profileHomePages = [
 let state = loadState();
 let selectedLearnerId = state.learners[0]?.id || null;
 let selectedMessageLearnerId = state.learners[0]?.id || null;
+let selectedReferentialId = state.referentials[0]?.id || null;
+let editingReferentialItem = null;
 let currentTraineeId = null;
 let currentTrainerId = null;
 let currentTutorId = null;
@@ -362,6 +364,10 @@ const riskCount = document.querySelector("#riskCount");
 const programList = document.querySelector("#programList");
 const profileGrid = document.querySelector("#profileGrid");
 const profileHomeGrid = document.querySelector("#profileHomeGrid");
+const referentialPicker = document.querySelector("#referentialPicker");
+const referentialListPanel = document.querySelector("#referentialListPanel");
+const referentialFormPanel = document.querySelector("#referentialFormPanel");
+const referentialFormTitle = document.querySelector("#referentialFormTitle");
 const referentialItemForm = document.querySelector("#referentialItemForm");
 const referentialProgram = document.querySelector("#referentialProgram");
 const referentialModality = document.querySelector("#referentialModality");
@@ -370,6 +376,7 @@ const referentialTheme = document.querySelector("#referentialTheme");
 const referentialPart = document.querySelector("#referentialPart");
 const referentialGeneralObjective = document.querySelector("#referentialGeneralObjective");
 const referentialSpecificObjective = document.querySelector("#referentialSpecificObjective");
+const referentialSubmitButton = document.querySelector("#referentialSubmitButton");
 const referentialList = document.querySelector("#referentialList");
 const referentialCount = document.querySelector("#referentialCount");
 const learnerList = document.querySelector("#learnerList");
@@ -423,6 +430,13 @@ learnerForm.addEventListener("submit", addLearner);
 trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
 referentialItemForm.addEventListener("submit", addReferentialItem);
+referentialPicker.addEventListener("change", () => {
+  selectedReferentialId = referentialPicker.value || null;
+  renderReferentials();
+});
+document.querySelector("#showReferentialListButton").addEventListener("click", showReferentialList);
+document.querySelector("#showReferentialFormButton").addEventListener("click", () => showReferentialForm());
+document.querySelector("#cancelReferentialEditButton").addEventListener("click", showReferentialList);
 noteForm.addEventListener("submit", addNote);
 messageForm.addEventListener("submit", addMessage);
 traineeLoginForm.addEventListener("submit", loginTrainee);
@@ -890,13 +904,28 @@ function renderReferentials() {
     .map((program) => `<option value="${escapeHtml(program)}">${escapeHtml(program)}</option>`)
     .join("");
 
+  if (!referentials.some((referential) => referential.id === selectedReferentialId)) {
+    selectedReferentialId = referentials[0]?.id || null;
+  }
+
+  referentialPicker.innerHTML = referentials.length
+    ? referentials.map((referential) => `
+      <option value="${escapeHtml(referential.id)}" ${referential.id === selectedReferentialId ? "selected" : ""}>
+        ${escapeHtml(referential.program)} - ${escapeHtml(referential.modality)}
+      </option>
+    `).join("")
+    : `<option value="">Aucun référentiel créé</option>`;
+  referentialPicker.disabled = !referentials.length;
+
   const itemCount = referentials.reduce((sum, referential) => (
     sum + referential.categories.reduce((categorySum, category) => categorySum + category.items.length, 0)
   ), 0);
   referentialCount.textContent = itemCount;
 
-  referentialList.innerHTML = referentials.length
-    ? referentials.map((referential) => `
+  const referential = referentials.find((item) => item.id === selectedReferentialId);
+
+  referentialList.innerHTML = referential
+    ? `
       <article class="referential-card">
         <div class="referential-card-top">
           <div>
@@ -930,6 +959,7 @@ function renderReferentials() {
                     </div>
                     <span class="referential-actions">
                       <button class="icon-danger-button" type="button" data-delete-referential-item="${referential.id}|${category.id}|${item.id}" aria-label="Retirer cette compétence" title="Retirer"></button>
+                      <button class="icon-edit-button" type="button" data-edit-referential-item="${referential.id}|${category.id}|${item.id}" aria-label="Modifier cette compétence" title="Modifier"></button>
                     </span>
                   </div>
                 `).join("") || `<div class="empty-state">Aucune compétence dans ce sous-menu.</div>`}
@@ -938,8 +968,8 @@ function renderReferentials() {
           `).join("")}
         </div>
       </article>
-    `).join("")
-    : `<div class="empty-state">Aucun référentiel enregistré pour le moment.</div>`;
+    `
+    : `<div class="empty-state">Aucun référentiel sélectionné. Cliquez sur “Créer ou compléter” pour créer le premier.</div>`;
 
   referentialList.querySelectorAll("[data-delete-referential]").forEach((button) => {
     button.addEventListener("click", () => deleteReferential(button.dataset.deleteReferential));
@@ -949,6 +979,13 @@ function renderReferentials() {
     button.addEventListener("click", () => {
       const [referentialId, categoryId, itemId] = button.dataset.deleteReferentialItem.split("|");
       deleteReferentialItem(referentialId, categoryId, itemId);
+    });
+  });
+
+  referentialList.querySelectorAll("[data-edit-referential-item]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const [referentialId, categoryId, itemId] = button.dataset.editReferentialItem.split("|");
+      editReferentialItem(referentialId, categoryId, itemId);
     });
   });
 
@@ -1615,7 +1652,7 @@ function addReferentialItem(event) {
   const part = referentialPart.value.trim();
   const generalObjective = referentialGeneralObjective.value.trim();
   const specificObjective = referentialSpecificObjective.value.trim();
-  const duration = referentialDuration.value.trim();
+  const durationValue = Number(referentialDuration.value.replace(",", "."));
   if (!program || !theme) {
     referentialTheme.focus();
     return;
@@ -1636,9 +1673,21 @@ function addReferentialItem(event) {
     return;
   }
 
+  if (!Number.isFinite(durationValue) || durationValue <= 0) {
+    referentialDuration.focus();
+    return;
+  }
+
+  const duration = formatHours(durationValue);
+  const itemId = editingReferentialItem?.itemId || crypto.randomUUID();
+  if (editingReferentialItem) {
+    removeReferentialItem(editingReferentialItem.referentialId, editingReferentialItem.categoryId, editingReferentialItem.itemId);
+  }
+
   const category = ensureReferentialCategory(program, modality, theme);
+  const referential = (state.referentials || []).find((item) => item.program === program && item.modality === modality);
   category.items.push({
-    id: crypto.randomUUID(),
+    id: itemId,
     text: specificObjective,
     part,
     generalObjective,
@@ -1646,13 +1695,65 @@ function addReferentialItem(event) {
     duration
   });
 
+  selectedReferentialId = referential?.id || selectedReferentialId;
+  clearReferentialForm();
+  saveState();
+  showReferentialList();
+  renderReferentials();
+}
+
+function showReferentialList() {
+  editingReferentialItem = null;
+  clearReferentialForm();
+  referentialFormPanel.hidden = true;
+  referentialListPanel.hidden = false;
+  referentialFormTitle.textContent = "Créer un élément";
+  referentialSubmitButton.textContent = "Créer dans le référentiel";
+}
+
+function showReferentialForm() {
+  editingReferentialItem = null;
+  clearReferentialForm();
+  referentialListPanel.hidden = true;
+  referentialFormPanel.hidden = false;
+  referentialFormTitle.textContent = "Créer ou compléter un référentiel";
+  referentialSubmitButton.textContent = "Créer dans le référentiel";
+  const referential = (state.referentials || []).find((item) => item.id === selectedReferentialId);
+  if (referential) {
+    referentialProgram.value = referential.program;
+    referentialModality.value = referential.modality;
+  }
+  referentialTheme.focus();
+}
+
+function editReferentialItem(referentialId, categoryId, itemId) {
+  const location = findReferentialItemLocation(referentialId, categoryId, itemId);
+  if (!location) {
+    return;
+  }
+
+  selectedReferentialId = referentialId;
+  editingReferentialItem = { referentialId, categoryId, itemId };
+  referentialListPanel.hidden = true;
+  referentialFormPanel.hidden = false;
+  referentialFormTitle.textContent = "Modifier l'élément";
+  referentialSubmitButton.textContent = "Enregistrer la modification";
+  referentialProgram.value = location.referential.program;
+  referentialModality.value = location.referential.modality;
+  referentialTheme.value = location.category.title;
+  referentialPart.value = location.category.items[location.itemIndex].part || "";
+  referentialGeneralObjective.value = location.category.items[location.itemIndex].generalObjective || "";
+  referentialSpecificObjective.value = location.category.items[location.itemIndex].specificObjective || location.category.items[location.itemIndex].text || "";
+  referentialDuration.value = parseDurationHours(location.category.items[location.itemIndex].duration || "") || "";
+  referentialPart.focus();
+}
+
+function clearReferentialForm() {
+  referentialTheme.value = "";
   referentialPart.value = "";
   referentialGeneralObjective.value = "";
   referentialSpecificObjective.value = "";
   referentialDuration.value = "";
-  referentialPart.focus();
-  saveState();
-  renderReferentials();
 }
 
 function ensureReferentialCategory(program, modality, categoryTitle) {
@@ -2256,11 +2357,18 @@ function deleteReferential(referentialId) {
   }
 
   state.referentials = (state.referentials || []).filter((item) => item.id !== referentialId);
+  selectedReferentialId = state.referentials[0]?.id || null;
   saveState();
   render();
 }
 
 function deleteReferentialItem(referentialId, categoryId, itemId) {
+  removeReferentialItem(referentialId, categoryId, itemId);
+  saveState();
+  renderReferentials();
+}
+
+function removeReferentialItem(referentialId, categoryId, itemId) {
   const referential = (state.referentials || []).find((item) => item.id === referentialId);
   const category = referential?.categories.find((item) => item.id === categoryId);
   if (!category) {
@@ -2269,8 +2377,6 @@ function deleteReferentialItem(referentialId, categoryId, itemId) {
 
   category.items = category.items.filter((item) => item.id !== itemId);
   referential.categories = referential.categories.filter((item) => item.items.length);
-  saveState();
-  renderReferentials();
 }
 
 function moveCategoryToCategory(referentialId, categoryId, targetCategoryId) {

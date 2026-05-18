@@ -178,10 +178,23 @@
             </div>
           </div>
 
-          <div class="referentials-layout">
-            <section class="panel referential-toolbox">
+          <div class="referential-workspace">
+            <section class="panel referential-selector-panel">
+              <div>
+                <label>
+                  <span>Choisir un référentiel</span>
+                  <select id="referentialPicker"></select>
+                </label>
+              </div>
+              <div class="referential-mode-actions">
+                <button class="ghost-button" id="showReferentialListButton" type="button">Voir la liste</button>
+                <button class="primary-button" id="showReferentialFormButton" type="button">Créer ou compléter</button>
+              </div>
+            </section>
+
+            <section class="panel referential-toolbox" id="referentialFormPanel" hidden>
               <div class="panel-heading">
-                <h3>Créer un élément</h3>
+                <h3 id="referentialFormTitle">Créer un élément</h3>
               </div>
 
               <form class="referential-form" id="referentialItemForm">
@@ -203,8 +216,8 @@
                     </select>
                   </label>
                   <label>
-                    <span>Durée</span>
-                    <input id="referentialDuration" placeholder="Ex. 4 heures">
+                    <span>Durée en heure</span>
+                    <input id="referentialDuration" type="number" min="0.25" step="0.25" required placeholder="Ex. 4">
                   </label>
                 </div>
                 <label>
@@ -223,11 +236,14 @@
                   <span>Objectif pédagogique spécifique</span>
                   <textarea id="referentialSpecificObjective" rows="3" required placeholder="Ex. Connaître le régime de détention des armes"></textarea>
                 </label>
-                <button class="primary-button" type="submit">Créer dans le référentiel</button>
+                <div class="dialog-actions">
+                  <button class="primary-button" id="referentialSubmitButton" type="submit">Créer dans le référentiel</button>
+                  <button class="ghost-button" id="cancelReferentialEditButton" type="button">Annuler</button>
+                </div>
               </form>
             </section>
 
-            <section class="panel">
+            <section class="panel" id="referentialListPanel">
               <div class="panel-heading">
                 <h3>Liste des référentiels</h3>
                 <span id="referentialCount">0</span>

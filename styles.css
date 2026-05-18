@@ -727,6 +727,25 @@ textarea {
   align-items: start;
 }
 
+.referential-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.referential-selector-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.referential-mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .referential-list,
 .referential-categories,
 .referential-items,
@@ -927,6 +946,44 @@ textarea {
 
 .icon-danger-button:hover {
   background: rgba(187, 61, 68, 0.15);
+}
+
+.icon-edit-button {
+  position: relative;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid rgba(36, 95, 143, 0.25);
+  border-radius: 8px;
+  background: rgba(36, 95, 143, 0.08);
+}
+
+.icon-edit-button::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 18px;
+  width: 15px;
+  height: 4px;
+  border-radius: 999px;
+  background: #245f8f;
+  transform: rotate(-38deg);
+}
+
+.icon-edit-button::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 24px;
+  width: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: #245f8f;
+}
+
+.icon-edit-button:hover {
+  background: rgba(36, 95, 143, 0.15);
 }
 
 .referential-category {
@@ -1454,6 +1511,7 @@ dialog::backdrop {
     .profile-home-grid,
     .trainers-layout,
     .referentials-layout,
+    .referential-selector-panel,
     .content-grid,
     .followup-layout,
     .messages-layout,
