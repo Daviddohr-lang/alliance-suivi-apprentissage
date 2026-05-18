@@ -672,6 +672,12 @@ textarea {
   top: 20px;
 }
 
+.detail-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .detail-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1172,11 +1178,26 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.ghost-link,
 .danger-link {
   border: 0;
   background: transparent;
-  color: var(--red);
   font-weight: 800;
+}
+
+.ghost-link {
+  color: var(--blue);
+}
+
+.danger-link {
+  color: var(--red);
 }
 
 .tutor-message-thread {

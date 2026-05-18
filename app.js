@@ -341,6 +341,9 @@ let selectedLearnerId = state.learners[0]?.id || null;
 let selectedMessageLearnerId = state.learners[0]?.id || null;
 let selectedReferentialId = state.referentials[0]?.id || null;
 let editingReferentialItem = null;
+let editingLearnerId = null;
+let editingTrainerId = null;
+let editingTutorId = null;
 let currentTraineeId = null;
 let currentTrainerId = null;
 let currentTutorId = null;
@@ -419,9 +422,9 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
 });
 
-document.querySelector("#openFormButton").addEventListener("click", () => learnerDialog.showModal());
-document.querySelector("#closeDialogButton").addEventListener("click", () => learnerDialog.close());
-document.querySelector("#cancelFormButton").addEventListener("click", () => learnerDialog.close());
+document.querySelector("#openFormButton").addEventListener("click", openNewLearnerDialog);
+document.querySelector("#closeDialogButton").addEventListener("click", closeLearnerDialog);
+document.querySelector("#cancelFormButton").addEventListener("click", closeLearnerDialog);
 document.querySelector("#exportButton").addEventListener("click", exportCsv);
 document.querySelector("#exportBackupButton").addEventListener("click", exportBackup);
 document.querySelector("#importBackupButton").addEventListener("click", () => document.querySelector("#importBackupInput").click());
@@ -532,11 +535,17 @@ function restoreSession() {
 function normalizeLearner(learner) {
   const modality = learner.modality || "Présentiel";
   const shouldMarkDistance = modality === "Distanciel" || modality === "Hybride";
+  const splitName = splitLearnerName(learner.name || "");
+  const firstName = learner.firstName || splitName.firstName;
+  const lastName = learner.lastName || splitName.lastName;
 
   return {
     ...learner,
+    firstName,
+    lastName,
+    name: learner.name || [lastName, firstName].filter(Boolean).join(" "),
     modality,
-    accessCode: learner.accessCode || generateAccessCode(learner.name),
+    accessCode: learner.accessCode || generateAccessCode([lastName, firstName].filter(Boolean).join(" ")),
     messages: learner.messages || [],
     modules: (learner.modules || []).map((module) => {
       if (shouldMarkDistance && module.name.startsWith("Vidéoprotection :")) {
@@ -897,7 +906,7 @@ function renderDashboard() {
   riskList.innerHTML = risky.length
     ? risky.map((learner) => `
       <article class="risk-item">
-        <strong>${learner.name}</strong>
+          <strong>${escapeHtml(learner.name)}</strong>
         <span>${learner.program} · présence ${learner.attendance}% · progression ${progressOf(learner)}%</span>
       </article>
     `).join("")
@@ -1244,7 +1253,12 @@ function renderTrainers() {
               <strong>${escapeHtml(personFullName(trainer) || "Formateur sans nom")}</strong>
               <span>${trainer.specialties?.length ? `${trainer.specialties.length} spécialité(s)` : "Spécialité non renseignée"}</span>
             </div>
-            ${currentRole === "admin" ? `<button class="danger-link" type="button" data-delete-trainer="${trainer.id}">Supprimer</button>` : ""}
+            ${currentRole === "admin" ? `
+              <span class="card-actions">
+                <button class="ghost-link" type="button" data-edit-trainer="${trainer.id}">Modifier</button>
+                <button class="danger-link" type="button" data-delete-trainer="${trainer.id}">Supprimer</button>
+              </span>
+            ` : ""}
           </div>
           <div class="trainer-specialties">
             ${trainer.specialties?.length
@@ -1270,6 +1284,10 @@ function renderTrainers() {
 
   trainerList.querySelectorAll("[data-delete-trainer]").forEach((button) => {
     button.addEventListener("click", () => deleteTrainer(button.dataset.deleteTrainer));
+  });
+
+  trainerList.querySelectorAll("[data-edit-trainer]").forEach((button) => {
+    button.addEventListener("click", () => editTrainer(button.dataset.editTrainer));
   });
 }
 
@@ -1324,7 +1342,7 @@ function renderDetail() {
   detailPanel.innerHTML = `
     <div class="detail-title">
       <div>
-        <h3>${learner.name}</h3>
+        <h3>${escapeHtml(learner.name)}</h3>
         <div class="learner-meta">${learner.program}</div>
       </div>
       <span class="status-pill ${statusClass(learner.status)}">${learner.status}</span>
@@ -1370,7 +1388,12 @@ function renderDetail() {
     <div class="timeline">
       ${learner.notes.slice(-3).reverse().map(noteTemplate).join("") || `<div class="empty-state">Aucune note enregistrée.</div>`}
     </div>
-    ${currentRole === "admin" ? `<button class="danger-button" id="deleteLearnerButton" type="button">Supprimer ce stagiaire</button>` : ""}
+    ${currentRole === "admin" ? `
+      <div class="detail-actions">
+        <button class="ghost-button" id="editLearnerButton" type="button">Modifier le stagiaire</button>
+        <button class="danger-button" id="deleteLearnerButton" type="button">Supprimer ce stagiaire</button>
+      </div>
+    ` : ""}
   `;
 
   detailPanel.querySelectorAll("[data-module]").forEach((checkbox) => {
@@ -1393,6 +1416,11 @@ function renderDetail() {
   const deleteLearnerButton = document.querySelector("#deleteLearnerButton");
   if (deleteLearnerButton) {
     deleteLearnerButton.addEventListener("click", () => deleteLearner(learner.id));
+  }
+
+  const editLearnerButton = document.querySelector("#editLearnerButton");
+  if (editLearnerButton) {
+    editLearnerButton.addEventListener("click", () => editLearner(learner.id));
   }
 }
 
@@ -1418,7 +1446,12 @@ function renderTutors() {
               <strong>${escapeHtml(tutorFullName(tutor) || "Tuteur sans nom")}</strong>
               <span>${escapeHtml(tutor.position || "Poste non renseigné")} · ${escapeHtml(tutor.company || "Entreprise non renseignée")}</span>
             </div>
-            ${currentRole === "admin" ? `<button class="danger-link" type="button" data-delete-tutor="${tutor.id}">Supprimer</button>` : ""}
+            ${currentRole === "admin" ? `
+              <span class="card-actions">
+                <button class="ghost-link" type="button" data-edit-tutor="${tutor.id}">Modifier</button>
+                <button class="danger-link" type="button" data-delete-tutor="${tutor.id}">Supprimer</button>
+              </span>
+            ` : ""}
           </div>
           <div class="tutor-info-grid">
             <div><span>Stagiaire</span><strong>${escapeHtml(learner?.name || "Non rattaché")}</strong></div>
@@ -1460,6 +1493,10 @@ function renderTutors() {
 
   tutorList.querySelectorAll("[data-delete-tutor]").forEach((button) => {
     button.addEventListener("click", () => deleteTutor(button.dataset.deleteTutor));
+  });
+
+  tutorList.querySelectorAll("[data-edit-tutor]").forEach((button) => {
+    button.addEventListener("click", () => editTutor(button.dataset.editTutor));
   });
 
   tutorList.querySelectorAll("[data-tutor-message-form]").forEach((form) => {
@@ -1728,7 +1765,9 @@ function noteTemplate(note, showLearner = false) {
 function addLearner(event) {
   event.preventDefault();
 
-  const name = document.querySelector("#learnerName").value.trim();
+  const lastName = document.querySelector("#learnerLastName").value.trim();
+  const firstName = document.querySelector("#learnerFirstName").value.trim();
+  const name = [lastName, firstName].filter(Boolean).join(" ");
   const program = document.querySelector("#learnerProgram").value.trim();
   const coach = document.querySelector("#learnerCoach").value.trim();
   const modality = document.querySelector("#learnerModality").value;
@@ -1736,8 +1775,12 @@ function addLearner(event) {
   const status = document.querySelector("#learnerStatus").value;
   const attendance = Number(document.querySelector("#learnerAttendance").value);
 
+  const existingLearner = state.learners.find((item) => item.id === editingLearnerId);
   const learner = {
-    id: crypto.randomUUID(),
+    ...(existingLearner || {}),
+    id: existingLearner?.id || crypto.randomUUID(),
+    firstName,
+    lastName,
     name,
     program,
     coach,
@@ -1745,19 +1788,60 @@ function addLearner(event) {
     startDate,
     status,
     attendance,
-    accessCode: generateAccessCode(name),
-    modules: modulesForProgram(program, modality),
-    notes: [],
-    messages: []
+    accessCode: existingLearner?.accessCode || generateAccessCode(name),
+    modules: existingLearner?.program === program && existingLearner?.modality === modality
+      ? existingLearner.modules
+      : modulesForProgram(program, modality),
+    notes: existingLearner?.notes || [],
+    messages: existingLearner?.messages || []
   };
 
-  state.learners.unshift(learner);
+  if (existingLearner) {
+    Object.assign(existingLearner, learner);
+  } else {
+    state.learners.unshift(learner);
+  }
+
   selectedLearnerId = learner.id;
   saveState();
-  learnerForm.reset();
-  learnerDialog.close();
+  closeLearnerDialog();
   setView("learners");
   render();
+}
+
+function openNewLearnerDialog() {
+  editingLearnerId = null;
+  learnerForm.reset();
+  document.querySelector("#learnerDialogTitle").textContent = "Ajouter un apprenant";
+  document.querySelector("#learnerSubmitButton").textContent = "Créer la fiche";
+  learnerDialog.showModal();
+}
+
+function closeLearnerDialog() {
+  editingLearnerId = null;
+  learnerForm.reset();
+  learnerDialog.close();
+}
+
+function editLearner(learnerId) {
+  const learner = state.learners.find((item) => item.id === learnerId);
+  if (!learner) {
+    return;
+  }
+
+  editingLearnerId = learnerId;
+  document.querySelector("#learnerDialogTitle").textContent = "Modifier l'apprenant";
+  document.querySelector("#learnerSubmitButton").textContent = "Enregistrer les modifications";
+  const splitName = splitLearnerName(learner.name);
+  document.querySelector("#learnerLastName").value = learner.lastName || splitName.lastName;
+  document.querySelector("#learnerFirstName").value = learner.firstName || splitName.firstName;
+  setSelectValue(document.querySelector("#learnerProgram"), learner.program);
+  document.querySelector("#learnerCoach").value = learner.coach;
+  document.querySelector("#learnerModality").value = learner.modality || "Présentiel";
+  document.querySelector("#learnerStart").value = learner.startDate;
+  document.querySelector("#learnerStatus").value = learner.status;
+  document.querySelector("#learnerAttendance").value = learner.attendance;
+  learnerDialog.showModal();
 }
 
 function addTrainer(event) {
@@ -1765,9 +1849,11 @@ function addTrainer(event) {
   const learnerIds = [...trainerLearners.selectedOptions].map((option) => option.value).filter(Boolean);
   const firstName = document.querySelector("#trainerFirstName").value.trim();
   const lastName = document.querySelector("#trainerLastName").value.trim();
+  const existingTrainer = state.trainers.find((item) => item.id === editingTrainerId);
 
   const trainer = {
-    id: crypto.randomUUID(),
+    ...(existingTrainer || {}),
+    id: existingTrainer?.id || crypto.randomUUID(),
     firstName,
     lastName,
     specialties: [...document.querySelectorAll('input[name="trainerSpecialties"]:checked')].map((input) => input.value),
@@ -1775,27 +1861,64 @@ function addTrainer(event) {
     email: document.querySelector("#trainerEmail").value.trim(),
     learnerIds,
     notes: document.querySelector("#trainerNotes").value.trim(),
-    accessCode: generateProfileCode("FORM", `${firstName} ${lastName}`)
+    accessCode: existingTrainer?.accessCode || generateProfileCode("FORM", `${firstName} ${lastName}`)
   };
 
   state.trainers = state.trainers || [];
-  state.trainers.unshift(trainer);
+  if (existingTrainer) {
+    Object.assign(existingTrainer, trainer);
+  } else {
+    state.trainers.unshift(trainer);
+  }
+
   saveState();
-  trainerForm.reset();
+  resetTrainerForm();
   setView("trainers");
   render();
+}
+
+function editTrainer(trainerId) {
+  const trainer = state.trainers.find((item) => item.id === trainerId);
+  if (!trainer) {
+    return;
+  }
+
+  editingTrainerId = trainerId;
+  trainerForm.querySelector("h3").textContent = "Modifier le formateur";
+  trainerForm.querySelector("button[type='submit']").textContent = "Enregistrer les modifications";
+  document.querySelector("#trainerLastName").value = trainer.lastName || "";
+  document.querySelector("#trainerFirstName").value = trainer.firstName || "";
+  document.querySelectorAll('input[name="trainerSpecialties"]').forEach((input) => {
+    input.checked = (trainer.specialties || []).includes(input.value);
+  });
+  document.querySelector("#trainerPhone").value = trainer.phone || "";
+  document.querySelector("#trainerEmail").value = trainer.email || "";
+  [...trainerLearners.options].forEach((option) => {
+    option.selected = (trainer.learnerIds || []).includes(option.value);
+  });
+  document.querySelector("#trainerNotes").value = trainer.notes || "";
+  trainerForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetTrainerForm() {
+  editingTrainerId = null;
+  trainerForm.reset();
+  trainerForm.querySelector("h3").textContent = "Ajouter un formateur";
+  trainerForm.querySelector("button[type='submit']").textContent = "Enregistrer le formateur";
 }
 
 function addTutor(event) {
   event.preventDefault();
   const learnerId = tutorLearner.value;
   const learner = state.learners.find((item) => item.id === learnerId);
+  const existingTutor = state.tutors.find((item) => item.id === editingTutorId);
   if (!learnerId) {
     return;
   }
 
   const tutor = {
-    id: crypto.randomUUID(),
+    ...(existingTutor || {}),
+    id: existingTutor?.id || crypto.randomUUID(),
     learnerId,
     firstName: document.querySelector("#tutorFirstName").value.trim(),
     lastName: document.querySelector("#tutorLastName").value.trim(),
@@ -1804,18 +1927,51 @@ function addTutor(event) {
     diploma: document.querySelector("#tutorDiploma").value.trim() || learner?.program || "",
     phone: document.querySelector("#tutorPhone").value.trim(),
     email: document.querySelector("#tutorEmail").value.trim(),
-    accessCode: generateProfileCode("TUT", `${document.querySelector("#tutorFirstName").value} ${document.querySelector("#tutorLastName").value}`),
+    accessCode: existingTutor?.accessCode || generateProfileCode("TUT", `${document.querySelector("#tutorFirstName").value} ${document.querySelector("#tutorLastName").value}`),
     notes: document.querySelector("#tutorNotes").value.trim(),
-    messages: []
+    messages: existingTutor?.messages || []
   };
 
   state.tutors = state.tutors || [];
-  state.tutors.unshift(tutor);
+  if (existingTutor) {
+    Object.assign(existingTutor, tutor);
+  } else {
+    state.tutors.unshift(tutor);
+  }
+
   selectedLearnerId = learnerId;
   saveState();
-  tutorForm.reset();
+  resetTutorForm();
   setView("tutors");
   render();
+}
+
+function editTutor(tutorId) {
+  const tutor = state.tutors.find((item) => item.id === tutorId);
+  if (!tutor) {
+    return;
+  }
+
+  editingTutorId = tutorId;
+  tutorForm.querySelector("h3").textContent = "Modifier le tuteur";
+  tutorForm.querySelector("button[type='submit']").textContent = "Enregistrer les modifications";
+  tutorLearner.value = tutor.learnerId || "";
+  document.querySelector("#tutorLastName").value = tutor.lastName || "";
+  document.querySelector("#tutorFirstName").value = tutor.firstName || "";
+  document.querySelector("#tutorPosition").value = tutor.position || "";
+  document.querySelector("#tutorCompany").value = tutor.company || "";
+  setSelectValue(document.querySelector("#tutorDiploma"), tutor.diploma || "");
+  document.querySelector("#tutorPhone").value = tutor.phone || "";
+  document.querySelector("#tutorEmail").value = tutor.email || "";
+  document.querySelector("#tutorNotes").value = tutor.notes || "";
+  tutorForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetTutorForm() {
+  editingTutorId = null;
+  tutorForm.reset();
+  tutorForm.querySelector("h3").textContent = "Ajouter un tuteur";
+  tutorForm.querySelector("button[type='submit']").textContent = "Enregistrer le tuteur";
 }
 
 function addReferentialItem(event) {
@@ -2803,12 +2959,41 @@ function splitTutorName(name = "") {
   };
 }
 
+function splitLearnerName(name = "") {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { firstName: "", lastName: "" };
+  }
+
+  if (parts.length === 1) {
+    return { firstName: "", lastName: parts[0] };
+  }
+
+  const firstPartLooksLikeLastName = parts[0] === parts[0].toUpperCase();
+  return firstPartLooksLikeLastName
+    ? { lastName: parts[0], firstName: parts.slice(1).join(" ") }
+    : { firstName: parts.slice(0, -1).join(" "), lastName: parts.at(-1) };
+}
+
 function tutorFullName(tutor) {
   return [tutor.firstName, tutor.lastName].filter(Boolean).join(" ").trim();
 }
 
 function personFullName(person) {
   return [person.firstName, person.lastName].filter(Boolean).join(" ").trim();
+}
+
+function setSelectValue(select, value) {
+  if (!value) {
+    select.value = "";
+    return;
+  }
+
+  if (![...select.options].some((option) => option.value === value || option.textContent === value)) {
+    select.insertAdjacentHTML("beforeend", `<option>${escapeHtml(value)}</option>`);
+  }
+
+  select.value = value;
 }
 
 function normalizeAccessCode(code) {

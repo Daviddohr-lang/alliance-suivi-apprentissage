@@ -594,15 +594,19 @@
         <div class="dialog-heading">
           <div>
             <p class="eyebrow">Nouvelle fiche</p>
-            <h2>Ajouter un apprenant</h2>
+            <h2 id="learnerDialogTitle">Ajouter un apprenant</h2>
           </div>
           <button class="icon-button" id="closeDialogButton" type="button" aria-label="Fermer">×</button>
         </div>
 
         <div class="form-grid">
           <label>
-            <span>Nom complet</span>
-            <input id="learnerName" required placeholder="Ex. Samira Benali">
+            <span>Nom</span>
+            <input id="learnerLastName" required placeholder="Ex. Benali">
+          </label>
+          <label>
+            <span>Prénom</span>
+            <input id="learnerFirstName" required placeholder="Ex. Samira">
           </label>
           <label>
             <span>Formation</span>
@@ -647,7 +651,7 @@
 
         <div class="dialog-actions">
           <button class="ghost-button" id="cancelFormButton" type="button">Annuler</button>
-          <button class="primary-button" type="submit">Créer la fiche</button>
+          <button class="primary-button" id="learnerSubmitButton" type="submit">Créer la fiche</button>
         </div>
       </form>
     </dialog>
