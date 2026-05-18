@@ -408,6 +408,7 @@ learnerForm.addEventListener("submit", addLearner);
 trainerForm.addEventListener("submit", addTrainer);
 tutorForm.addEventListener("submit", addTutor);
 referentialItemForm.addEventListener("submit", addReferentialItem);
+document.querySelector("#createReferentialCategoryButton").addEventListener("click", createReferentialCategory);
 referentialProgram.addEventListener("change", renderReferentialCategoryOptions);
 referentialModality.addEventListener("change", renderReferentialCategoryOptions);
 noteForm.addEventListener("submit", addNote);
@@ -1558,10 +1559,44 @@ function addReferentialItem(event) {
   const newCategoryTitle = document.querySelector("#referentialCategory").value.trim();
   const categoryTitle = newCategoryTitle || referentialCategorySelect.value;
   const text = document.querySelector("#referentialItemText").value.trim();
-  if (!program || !categoryTitle || !text) {
+  if (!program || !categoryTitle) {
+    document.querySelector("#referentialCategory").focus();
     return;
   }
 
+  if (!text) {
+    document.querySelector("#referentialItemText").focus();
+    return;
+  }
+
+  const category = ensureReferentialCategory(program, modality, categoryTitle);
+  category.items.push({
+    id: crypto.randomUUID(),
+    text
+  });
+
+  document.querySelector("#referentialCategory").value = "";
+  document.querySelector("#referentialItemText").value = "";
+  saveState();
+  renderReferentials();
+}
+
+function createReferentialCategory() {
+  const program = referentialProgram.value;
+  const modality = referentialModality.value;
+  const categoryTitle = document.querySelector("#referentialCategory").value.trim();
+  if (!program || !categoryTitle) {
+    document.querySelector("#referentialCategory").focus();
+    return;
+  }
+
+  ensureReferentialCategory(program, modality, categoryTitle);
+  document.querySelector("#referentialCategory").value = "";
+  saveState();
+  renderReferentials();
+}
+
+function ensureReferentialCategory(program, modality, categoryTitle) {
   state.referentials = state.referentials || [];
   let referential = state.referentials.find((item) => item.program === program && item.modality === modality);
   if (!referential) {
@@ -1584,15 +1619,7 @@ function addReferentialItem(event) {
     referential.categories.push(category);
   }
 
-  category.items.push({
-    id: crypto.randomUUID(),
-    text
-  });
-
-  document.querySelector("#referentialCategory").value = "";
-  document.querySelector("#referentialItemText").value = "";
-  saveState();
-  renderReferentials();
+  return category;
 }
 
 function addTutorMessage(event) {
